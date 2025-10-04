@@ -1,80 +1,63 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>會員儲值與交易查詢</title>
   <style>
-    body { font-family: "Noto Sans TC", Arial, sans-serif; max-width:720px; margin:30px auto; padding: 0 12px; background:#f9fbfc; }
+    body { font-family: "Noto Sans TC", Arial, sans-serif; max-width:720px; margin:30px auto; padding:0 12px; background:#f8fafc; }
     h2 { text-align:center; color:#222; }
-    .input { margin:8px 0; }
-    input { width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box; font-size:15px; }
-    button { width:100%; margin-top:8px; padding:10px; background:#007bff; color:#fff; border:none; border-radius:6px; font-weight:600; cursor:pointer; }
-    button:hover { background:#0062cc; }
-    .result { margin-top:18px; }
-    .error { color:#d32f2f; font-weight:700; text-align:center; }
-    .balance { text-align:center; font-size:18px; font-weight:700; color:#007bff; margin-top:10px; }
-    table { width:100%; border-collapse:collapse; margin-top:12px; background:#fff; }
+    input { width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:15px; box-sizing:border-box; }
+    button { width:100%; margin-top:10px; padding:10px; background:#007bff; color:white; border:none; border-radius:6px; font-size:15px; cursor:pointer; }
+    button:hover { background:#005fcc; }
+    .result { margin-top:20px; }
+    .error { color:#d32f2f; text-align:center; font-weight:bold; }
+    .balance { text-align:center; font-size:18px; font-weight:bold; color:#007bff; margin-top:10px; }
+    table { width:100%; border-collapse:collapse; margin-top:15px; background:white; }
     th, td { border:1px solid #ddd; padding:8px; text-align:center; font-size:13px; }
-    th { background:#f4f6f8; }
+    th { background:#f1f3f5; }
     @media (max-width:600px) { th, td { font-size:12px; padding:6px; } }
   </style>
 </head>
 <body>
   <h2>會員儲值與交易查詢</h2>
 
-  <div class="input">
-    <input id="memberID" placeholder="會員號 (C欄，例如：1001)">
-  </div>
-  <div class="input">
-    <input id="phone" placeholder="電話 (J欄，例如：0912345678)">
-  </div>
-  <div class="input">
-    <input id="email" placeholder="Email (K欄，例如：test@gmail.com)">
-  </div>
-  <button id="btnSearch">查詢</button>
+  <input id="memberID" placeholder="請輸入會員號 (C欄，例如：1001)">
+  <button onclick="search()">查詢</button>
 
   <div id="result" class="result"></div>
 
   <script>
-    // ====== 請將下面常數替換成你自己部署後的 Apps Script URL ======
-    const API_URL = "https://script.google.com/macros/s/AKfycbykDUmWMN9xksU4tlosyjgv5Q3OXpRf_liJFVO63F0sucTGZfZmAX9sjZ_OjTjKOsGL/exec"; // <- 換成你的
+    // 請改成你自己的 Apps Script Web App URL
+    const API_URL = "https://script.google.com/macros/s/AKfycbXXXXXXX/exec";
 
     function escapeHtml(str) {
-      return String(str || "").replace(/[&<>"']/g, function(m){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]; });
+      return String(str || "").replace(/[&<>"']/g, s => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[s]));
     }
-
-    document.getElementById('btnSearch').addEventListener('click', search);
 
     async function search() {
       const memberID = document.getElementById('memberID').value.trim();
-      const phone = document.getElementById('phone').value.trim();
-      const email = document.getElementById('email').value.trim();
       const resultDiv = document.getElementById('result');
       resultDiv.innerHTML = "查詢中...";
 
-      if (!memberID && !phone && !email) {
-        resultDiv.innerHTML = '<p class="error">請輸入會員號、電話或信箱任一項查詢。</p>';
+      if (!memberID) {
+        resultDiv.innerHTML = `<p class="error">請輸入會員號。</p>`;
         return;
       }
 
-      const params = new URLSearchParams({ memberID, phone, email });
-
       try {
-        const resp = await fetch(API_URL + "?" + params.toString(), { method: 'GET', cache: 'no-cache' });
+        const resp = await fetch(`${API_URL}?memberID=${encodeURIComponent(memberID)}`);
         const text = await resp.text();
-
-        // 嘗試解析 JSON；若不是 JSON 就顯示原始文字（方便 debug）
         let data;
-        try { data = JSON.parse(text); } 
-        catch (e) { throw new Error("伺服器回傳非JSON回應：\n" + text); }
+        try { data = JSON.parse(text); } catch { throw new Error("回傳資料非 JSON 格式:\n" + text); }
 
         if (data.error) {
           resultDiv.innerHTML = `<p class="error">${escapeHtml(data.error)}</p>`;
           return;
         }
 
-        // 成功：顯示結果
         const rows = data.transactions || [];
         const balance = data.currentBalance;
         let html = `<div class="balance">目前餘額：$${escapeHtml(String(balance))}</div>`;
@@ -96,8 +79,7 @@
 
       } catch (err) {
         console.error(err);
-        resultDiv.innerHTML = `<p class="error">查詢失敗：${escapeHtml(err.message)}</p>
-          <p style="font-size:12px;text-align:center;color:#666">請檢查 Apps Script 是否已正確部署 (見下方說明)。</p>`;
+        resultDiv.innerHTML = `<p class="error">查詢失敗：${escapeHtml(err.message)}</p>`;
       }
     }
   </script>
