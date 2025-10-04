@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>會員儲值與交易查詢系統</title>
+  <style>
+    body {
+      font-family: "Noto Sans TC", Arial, sans-serif;
+      max-width: 720px;
+      margin: 40px auto;
+      padding: 0 15px;
+      background-color: #fafafa;
+    }
+    h2 { text-align: center; margin-bottom: 15px; color: #333; }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin: 6px 0;
+      box-sizing: border-box;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover { background-color: #0056b3; }
+    .result { margin-top: 25px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      background: white;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+      font-size: 14px;
+    }
+    th { background-color: #f0f0f0; }
+    .balance {
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
+      color: #007bff;
+      margin-top: 20px;
+    }
+    .error {
+      text-align: center;
+      color: red;
+      font-weight: bold;
+      margin-top: 20px;
+    }
+    @media (max-width: 600px) {
+      th, td { font-size: 12px; padding: 6px; }
+      h2 { font-size: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <h2>會員儲值與交易查詢</h2>
+  <p>請輸入 <b>會員號</b>、<b>電話</b> 或 <b>Email</b> 任一項查詢。</p>
+
+  <input id="memberID" placeholder="會員號 (例如：1001)">
+  <input id="phone" placeholder="電話 (例如：0912345678)">
+  <input id="email" placeholder="Email (例如：test@gmail.com)">
+  <button onclick="search()">查詢</button>
+
+  <div id="result" class="result"></div>
+
+  <script>
+    async function search() {
+      const id = document.getElementById('memberID').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const resDiv = document.getElementById('result');
+      resDiv.innerHTML = "查詢中...";
+
+      // 🔗 請改成你自己的 Apps Script 部署網址
+      const api = "https://script.google.com/macros/s/AKfycbXXXXXXX/exec";
+      const params = new URLSearchParams({ memberID: id, phone, email });
+
+      try {
+        const res = await fetch(`${api}?${params}`);
+        const data = await res.json();
+
+        if (data.error) {
+          resDiv.innerHTML = `<p class="error">${data.error}</p>`;
+          return;
+        }
+
+        resDiv.innerHTML = `
+          <div class="balance">目前餘額：$${data.currentBalance}</div>
+          <p style="text-align:center;">共 ${data.totalRecords} 筆交易紀錄</p>
+          <table>
+            <tr>
+              <th>日期</th>
+              <th>訂單號</th>
+              <th>儲值金</th>
+              <th>紅利</th>
+              <th>扣款</th>
+              <th>特殊調整</th>
+              <th>餘額</th>
+            </tr>
+            ${data.transactions.map(t => `
+              <tr>
+                <td>${t.date}</td>
+                <td>${t.orderID}</td>
+                <td>${t.deposit}</td>
+                <td>${t.bonus}</td>
+                <td>${t.deduction}</td>
+                <td>${t.adjustment}</td>
+                <td>${t.balance}</td>
+              </tr>
+            `).join('')}
+          </table>
+        `;
+      } catch (err) {
+        resDiv.innerHTML = `<p class="error">查詢失敗，請稍後再試。</p>`;
+        console.error(err);
+      }
+    }
+  </script>
+</body>
+</html>
