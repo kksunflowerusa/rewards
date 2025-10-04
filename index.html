@@ -1,87 +1,83 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>會員儲值與交易查詢</title>
-  <style>
-    body { font-family: "Noto Sans TC", Arial, sans-serif; max-width:720px; margin:30px auto; padding:0 12px; background:#f8fafc; }
-    h2 { text-align:center; color:#222; }
-    input { width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:15px; box-sizing:border-box; }
-    button { width:100%; margin-top:10px; padding:10px; background:#007bff; color:white; border:none; border-radius:6px; font-size:15px; cursor:pointer; }
-    button:hover { background:#005fcc; }
-    .result { margin-top:20px; }
-    .error { color:#d32f2f; text-align:center; font-weight:bold; }
-    .balance { text-align:center; font-size:18px; font-weight:bold; color:#007bff; margin-top:10px; }
-    table { width:100%; border-collapse:collapse; margin-top:15px; background:white; }
-    th, td { border:1px solid #ddd; padding:8px; text-align:center; font-size:13px; }
-    th { background:#f1f3f5; }
-    @media (max-width:600px) { th, td { font-size:12px; padding:6px; } }
-  </style>
-</head>
-<body>
-  <h2>會員儲值與交易查詢</h2>
+function doGet() {
+  return HtmlService.createHtmlOutputFromFile('index')
+    .setTitle('會員交易紀錄查詢')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
 
-  <input id="memberID" placeholder="請輸入會員號 (C欄，例如：1001)">
-  <button onclick="search()">查詢</button>
+function searchTransactions(memberId, startDate, endDate, quickRange) {
+  try {
+    const sheet = SpreadsheetApp.openById("1hMdR4oz8lG7otmOHYALLW3_42O0-jSzMseoR1l6oD8Y")
+      .getSheetByName("Transactions"); // ✅ 修改為實際表單名稱
 
-  <div id="result" class="result"></div>
+    const data = sheet.getRange(5, 2, sheet.getLastRow() - 4, 10).getDisplayValues(); 
+    const today = new Date();
+    let start, end;
 
-  <script>
-    // 請改成你自己的 Apps Script Web App URL
-    const API_URL = "https://script.google.com/macros/s/AKfycbzDKQpHcAjkfIKcvj7XpAUIK4uHNQ_lK2e80_FV35MWMbW90xG0t_ZezVmga3WHFo28/exec";
-
-    function escapeHtml(str) {
-      return String(str || "").replace(/[&<>"']/g, s => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-      }[s]));
+    // 日期處理
+    if (quickRange === "30") {
+      start = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+      end = today;
+    } else if (quickRange === "60") {
+      start = new Date(today.getTime() - 60 * 24 * 60 * 60 * 1000);
+      end = today;
+    } else {
+      start = startDate ? new Date(startDate) : new Date("2000-01-01");
+      end = endDate ? new Date(endDate) : today;
     }
 
-    async function search() {
-      const memberID = document.getElementById('memberID').value.trim();
-      const resultDiv = document.getElementById('result');
-      resultDiv.innerHTML = "查詢中...";
+    const results = data.filter(row => {
+      const dateStr = row[0];
+      if (!dateStr) return false;
+      const date = new Date(dateStr);
+      const member = String(row[1]).trim();
+      return member === memberId && date >= start && date <= end;
+    }).map(row => ({
+      date: row[0],
+      member: row[1],
+      order: row[2],
+      deposit: row[3],
+      bonus: row[4],
+      deduction: row[5],
+      adjust: row[6],
+      balance: row[7]
+    }));
 
-      if (!memberID) {
-        resultDiv.innerHTML = `<p class="error">請輸入會員號。</p>`;
-        return;
-      }
+    return results.length > 0 ? results : [{error: "查無符合條件的交易紀錄"}];
+  } catch (err) {
+    return [{error: "查詢失敗：" + err.message}];
+  }
+}
 
-      try {
-        const resp = await fetch(`${API_URL}?memberID=${encodeURIComponent(memberID)}`);
-        const text = await resp.text();
-        let data;
-        try { data = JSON.parse(text); } catch { throw new Error("回傳資料非 JSON 格式:\n" + text); }
+function exportTransactions(memberId, startDate, endDate, quickRange) {
+  const results = searchTransactions(memberId, startDate, endDate, quickRange);
+  if (results.length === 0 || results[0].error) {
+    throw new Error("無符合條件的資料，無法匯出");
+  }
 
-        if (data.error) {
-          resultDiv.innerHTML = `<p class="error">${escapeHtml(data.error)}</p>`;
-          return;
-        }
+  const headers = ["日期", "會員號", "訂單號", "儲值金", "額外紅利", "扣款金額", "特殊調整", "餘額"];
+  const sheetData = [headers, ...results.map(r => [
+    r.date, r.member, r.order, r.deposit, r.bonus, r.deduction, r.adjust, r.balance
+  ])];
 
-        const rows = data.transactions || [];
-        const balance = data.currentBalance;
-        let html = `<div class="balance">目前餘額：$${escapeHtml(String(balance))}</div>`;
-        html += `<p style="text-align:center;">共 ${rows.length} 筆交易紀錄</p>`;
-        html += `<table><tr><th>日期</th><th>訂單號</th><th>儲值金</th><th>紅利</th><th>扣款</th><th>特殊調整</th><th>餘額</th></tr>`;
-        html += rows.map(r => `
-          <tr>
-            <td>${escapeHtml(r.date)}</td>
-            <td>${escapeHtml(r.orderID)}</td>
-            <td>${escapeHtml(String(r.deposit))}</td>
-            <td>${escapeHtml(String(r.bonus))}</td>
-            <td>${escapeHtml(String(r.deduction))}</td>
-            <td>${escapeHtml(String(r.adjustment))}</td>
-            <td>${escapeHtml(String(r.balance))}</td>
-          </tr>
-        `).join('');
-        html += `</table>`;
-        resultDiv.innerHTML = html;
+  // 建立 Excel 檔案
+  const file = SpreadsheetApp.create("tempExport");
+  const tempSheet = file.getActiveSheet();
+  tempSheet.clear();
+  tempSheet.getRange(1, 1, sheetData.length, sheetData[0].length).setValues(sheetData);
 
-      } catch (err) {
-        console.error(err);
-        resultDiv.innerHTML = `<p class="error">查詢失敗：${escapeHtml(err.message)}</p>`;
-      }
-    }
-  </script>
-</body>
-</html>
+  // 匯出成 Excel 檔案
+  const xlsx = DriveApp.getFileById(file.getId()).getAs("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+
+  // ✅ 自動帶會員號與日期
+  const today = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd");
+  const filename = `交易紀錄_${memberId}_${today}.xlsx`;
+
+  // 刪除暫存檔
+  DriveApp.getFileById(file.getId()).setTrashed(true);
+
+  return {
+    blob: Utilities.base64Encode(xlsx.getBytes()),
+    filename: filename,
+    mimeType: xlsx.getContentType()
+  };
+}
