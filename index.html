@@ -5,92 +5,85 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>會員儲值與交易查詢</title>
   <style>
-    body { font-family:"Noto Sans TC",Arial,sans-serif; max-width:800px; margin:30px auto; padding:0 12px; background:#f8fafc; }
+    body { font-family:"Noto Sans TC",Arial,sans-serif; max-width:720px; margin:30px auto; padding:0 12px; background:#f8fafc; }
     h2 { text-align:center; color:#222; }
-    input, select { width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:15px; box-sizing:border-box; margin-top:5px; }
+    label { display:block; margin-top:10px; font-weight:bold; }
+    input, select { width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:15px; box-sizing:border-box; }
     button { width:100%; margin-top:10px; padding:10px; background:#007bff; color:white; border:none; border-radius:6px; font-size:15px; cursor:pointer; }
     button:hover { background:#005fcc; }
-    .filters { margin-top:15px; display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     .result { margin-top:20px; }
     .error { color:#d32f2f; text-align:center; font-weight:bold; }
     .balance { text-align:center; font-size:18px; font-weight:bold; color:#007bff; margin-top:10px; }
     table { width:100%; border-collapse:collapse; margin-top:15px; background:white; }
     th, td { border:1px solid #ddd; padding:8px; text-align:center; font-size:13px; }
     th { background:#f1f3f5; }
-    @media (max-width:600px){ th,td{font-size:12px;padding:6px;} }
+    @media (max-width:600px) { th, td { font-size:12px; padding:6px; } }
   </style>
 </head>
 <body>
   <h2>會員儲值與交易查詢</h2>
 
-  <label>會員號：</label>
-  <input id="memberID" placeholder="請輸入會員號 (C欄，例如：1001)">
+  <label>會員號 (C欄，例如：1001)</label>
+  <input id="memberID" placeholder="請輸入會員號">
 
-  <div class="filters">
-    <div>
-      <label>開始日期：</label>
-      <input type="date" id="startDate">
-    </div>
-    <div>
-      <label>結束日期：</label>
-      <input type="date" id="endDate">
-    </div>
-  </div>
+  <label>開始日期</label>
+  <input id="startDate" type="date">
 
-  <label>快捷選項：</label>
-  <select id="quickRange">
-    <option value="">無</option>
+  <label>結束日期</label>
+  <input id="endDate" type="date">
+
+  <label>快捷查詢</label>
+  <select id="quickRange" onchange="applyQuickRange()">
+    <option value="">--請選擇--</option>
     <option value="30">近30天</option>
     <option value="60">近60天</option>
   </select>
 
   <button onclick="search()">查詢</button>
-  <button onclick="downloadExcel()">下載 Excel</button>
-
   <div id="result" class="result"></div>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbygerQTWWoJcrYhhoNjaoKohdXMtLhaah_NI4H7roG1Izs52zqi2TkzvwZSVzIO8pKr/exec"; // 改成你的 Apps Script URL
+    // 請改成你自己的 Apps Script Web App URL
+    const API_URL = "https://script.google.com/macros/s/AKfycbXXXXXXX/exec";
 
     function escapeHtml(str) {
-      return String(str || "").replace(/[&<>"']/g, s => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-      }[s]));
+      return String(str || "").replace(/[&<>"']/g, s => (
+        { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[s]
+      ));
     }
 
-    async function search(download=false) {
-      const memberID = document.getElementById("memberID").value.trim();
-      const startDate = document.getElementById("startDate").value;
-      const endDate = document.getElementById("endDate").value;
-      const quickRange = document.getElementById("quickRange").value;
+    function applyQuickRange() {
+      const range = document.getElementById("quickRange").value;
+      if (!range) return;
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - Number(range));
+      document.getElementById("startDate").value = start.toISOString().slice(0,10);
+      document.getElementById("endDate").value = end.toISOString().slice(0,10);
+    }
 
-      const resultDiv = document.getElementById("result");
-      if (!download) resultDiv.innerHTML = "查詢中...";
+    async function search() {
+      const memberID = document.getElementById('memberID').value.trim();
+      const startDate = document.getElementById('startDate').value;
+      const endDate = document.getElementById('endDate').value;
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = "查詢中...";
 
       if (!memberID) {
         resultDiv.innerHTML = `<p class="error">請輸入會員號。</p>`;
         return;
       }
 
-      const params = new URLSearchParams({
-        memberID, startDate, endDate, quickRange, download: download ? "1" : "0"
-      });
-
       try {
-        const resp = await fetch(`${API_URL}?${params.toString()}`);
-        if (download) {
-          const blob = await resp.blob();
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = ""; // 後端自動帶檔名
-          a.click();
-          return;
-        }
-
+        const url = `${API_URL}?memberID=${encodeURIComponent(memberID)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+        const resp = await fetch(url);
         const text = await resp.text();
         let data;
-        try { data = JSON.parse(text); } catch { throw new Error("回傳資料非 JSON 格式:\n" + text); }
+        try {
+          data = JSON.parse(text);
+        } catch {
+          throw new Error("回傳資料非 JSON 格式:\n" + text);
+        }
 
         if (data.error) {
           resultDiv.innerHTML = `<p class="error">${escapeHtml(data.error)}</p>`;
@@ -98,7 +91,8 @@
         }
 
         const rows = data.transactions || [];
-        let html = `<div class="balance">目前餘額：${escapeHtml(data.currentBalance)}</div>`;
+        const balance = data.currentBalance;
+        let html = `<div class="balance">目前餘額：$${escapeHtml(String(balance))}</div>`;
         html += `<p style="text-align:center;">共 ${rows.length} 筆交易紀錄</p>`;
         html += `<table><tr><th>日期</th><th>訂單號</th><th>儲值金</th><th>紅利</th><th>扣款</th><th>特殊調整</th><th>餘額</th></tr>`;
         html += rows.map(r => `
@@ -111,17 +105,13 @@
             <td>${escapeHtml(r.adjustment)}</td>
             <td>${escapeHtml(r.balance)}</td>
           </tr>
-        `).join("");
+        `).join('');
         html += `</table>`;
         resultDiv.innerHTML = html;
-
       } catch (err) {
+        console.error(err);
         resultDiv.innerHTML = `<p class="error">查詢失敗：${escapeHtml(err.message)}</p>`;
       }
-    }
-
-    function downloadExcel() {
-      search(true);
     }
   </script>
 </body>
