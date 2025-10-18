@@ -14,6 +14,8 @@
     .result { margin-top:20px; }
     .error { color:#d32f2f; text-align:center; font-weight:bold; }
     .balance, .summary { text-align:center; font-size:16px; font-weight:bold; color:#007bff; margin-top:10px; }
+    .memberInfo { text-align:center; background:#fff; border:1px solid #ccc; border-radius:8px; padding:10px; margin-top:10px; line-height:1.8; }
+    .memberInfo span { display:inline-block; margin:0 10px; font-size:15px; color:#333; }
     .muted { text-align:center; color:#666; font-size:13px; margin-top:6px; }
     table { width:100%; border-collapse:collapse; margin-top:15px; background:white; }
     th, td { border:1px solid #ddd; padding:8px; text-align:center; font-size:13px; }
@@ -24,7 +26,7 @@
 <body>
   <h2>會員儲值與交易查詢</h2>
 
-  <label>會員號 (例如：A12345)</label>
+  <label>會員號 (C欄，例如：1001)</label>
   <input id="memberID" placeholder="請輸入會員號">
 
   <label>開始日期</label>
@@ -44,7 +46,7 @@
   <div id="result" class="result"></div>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbyUeVBMX22rvJlsDVFai1VUWoqzivaXrK0x-1DV-9TlTkZWxbmltrPtNPL9NaQStbIw/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbxbygiacv2Gr_hYODufnRrTDAeq1H4oBLva-y7fwov1pKRfdFAIaR23RCIzwIe64ARa/exec";
 
     function escapeHtml(str) {
       return String(str || "").replace(/[&<>"']/g, s => (
@@ -81,7 +83,14 @@
       try {
         const url = `${API_URL}?memberID=${encodeURIComponent(memberID)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
         const resp = await fetch(url);
-        const data = await resp.json();
+        const text = await resp.text();
+
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (err) {
+          throw new Error("回傳資料非 JSON 格式:\n" + text);
+        }
 
         if (data.error) {
           resultDiv.innerHTML = `<p class="error">${escapeHtml(data.error)}</p>`;
@@ -92,16 +101,30 @@
         const currentBalance = data.currentBalance || 0;
         const totalDeposit = data.totalDeposit || 0;
         const totalBonus = data.totalBonus || 0;
-        const totalOrderAmount = data.totalOrderAmount || 0;
-        const totalDiscountAmount = data.totalDiscountAmount || 0;
+        const rangeDeposit = data.rangeDeposit || 0;
+        const rangeBonus = data.rangeBonus || 0;
         const note = data.note || "";
 
-        let html = `<div class="balance">目前餘額：$${escapeHtml(String(currentBalance))}</div>`;
-        html += `<div class="summary">歷史總儲值：$${escapeHtml(String(totalDeposit))}　｜　歷史總紅利：$${escapeHtml(String(totalBonus))}</div>`;
-        html += `<div class="summary" style="font-size:14px; margin-top:6px;">歷史總訂單金額：$${escapeHtml(String(totalOrderAmount))}　｜　歷史總折扣金額：$${escapeHtml(String(totalDiscountAmount))}</div>`;
+        // ✅ 新增會員資訊欄位（Apps Script需回傳 memberLevel, memberDiscount, memberExpire）
+        const memberLevel = data.memberLevel || "未設定";
+        const memberDiscount = data.memberDiscount ? `${data.memberDiscount}%` : "—";
+        const memberExpire = data.memberExpire || "—";
+
+        let html = `
+          <div class="memberInfo">
+            <span><b>會員等級：</b>${escapeHtml(memberLevel)}</span>
+            <span><b>會員折扣：</b>${escapeHtml(memberDiscount)}</span>
+            <span><b>到期日：</b>${escapeHtml(memberExpire)}</span>
+          </div>
+        `;
+
+        html += `<div class="balance">目前餘額：$${escapeHtml(String(currentBalance))}</div>`;
+        html += `<div class="summary">區間儲值：$${escapeHtml(String(rangeDeposit))}　｜　區間紅利：$${escapeHtml(String(rangeBonus))}</div>`;
+        html += `<div class="summary" style="font-weight:600; font-size:14px; margin-top:6px;">歷史總儲值：$${escapeHtml(String(totalDeposit))}　｜　歷史總紅利：$${escapeHtml(String(totalBonus))}</div>`;
 
         if (note) html += `<div class="muted">${escapeHtml(note)}</div>`;
-        html += `<p style="text-align:center; margin-top:6px;">共 ${rows.length} 筆交易紀錄</p>`;
+
+        html += `<p style="text-align:center; margin-top:6px;">共 ${rows.length} 筆交易紀錄（顯示為篩選後結果）</p>`;
 
         if (rows.length === 0) {
           html += `<div style="text-align:center; margin-top:10px; color:#666;">無符合篩選的交易紀錄。</div>`;
@@ -109,20 +132,20 @@
           return;
         }
 
-        html += `<table><tr><th>日期</th><th>訂單號</th><th>儲值金</th><th>紅利</th><th>扣款</th><th>折扣</th><th>特殊調整</th><th>餘額</th></tr>`;
+        html += `<table><tr><th>日期</th><th>訂單號</th><th>儲值金</th><th>紅利</th><th>扣款</th><th>特殊調整</th><th>餘額</th></tr>`;
         html += rows.map(r => `
           <tr>
             <td>${escapeHtml(r.date)}</td>
             <td>${escapeHtml(r.orderID)}</td>
             <td>${escapeHtml(String(r.deposit))}</td>
             <td>${escapeHtml(String(r.bonus))}</td>
-            <td>${escapeHtml(String(r.deduction))}</td>
-            <td>${escapeHtml(String(r.discount))}</td>
-            <td>${escapeHtml(String(r.adjustment))}</td>
-            <td>${escapeHtml(String(r.balance))}</td>
+            <td>${escapeHtml(String(r.deduction || ""))}</td>
+            <td>${escapeHtml(String(r.adjustment || ""))}</td>
+            <td>${escapeHtml(String(r.balance || ""))}</td>
           </tr>
         `).join('');
         html += `</table>`;
+
         resultDiv.innerHTML = html;
 
       } catch (err) {
