@@ -20,6 +20,7 @@
     th, td { border:1px solid #ddd; padding:8px; text-align:center; font-size:13px; }
     th { background:#f1f3f5; }
     @media (max-width:720px) { th, td { font-size:12px; padding:6px; } }
+    .hint { font-size:13px; color:#666; margin-top:8px; text-align:center; }
   </style>
 </head>
 <body>
@@ -37,15 +38,19 @@
   <label>快捷查詢</label>
   <select id="quickRange" onchange="applyQuickRange()">
     <option value="">--請選擇--</option>
+    <option value="7">近7天</option>
     <option value="30">近30天</option>
     <option value="60">近60天</option>
   </select>
 
   <button onclick="search()">查詢</button>
   <div id="result" class="result"></div>
+  <div class="hint">提示：請先將 Apps Script 的 SPREADSHEET_ID 與下方 API_URL 設定為你自己的值，並確保已部署為 Web App。</div>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbxN4oX15yKgiT6Q6MvretwI0fOOWBKtqfZN49DIMJPgulW2zbzag4T53ptFezFjokGy/exec"; // ← 換成你部署後的網址
+    // ---------- 設定區：請改成你已部署的 Web App URL ----------
+    const API_URL = "https://script.google.com/macros/s/AKfycbznb9n6-27V1KgDpjI8CaWgdBiQBYEvnoffvKSQNlQYh768_vI3x2hJtEZ1CWePfL9Q/exec"; // ← 例： https://script.google.com/macros/s/XXXX/exec
+    // ---------------------------------------------------------
 
     function escapeHtml(str) {
       return String(str || "").replace(/[&<>"']/g, s => (
@@ -58,7 +63,7 @@
       if (!range) return;
       const end = new Date();
       const start = new Date();
-      start.setDate(end.getDate() - Number(range));
+      start.setDate(end.getDate() - Number(range) + 1);
       document.getElementById("startDate").value = start.toISOString().slice(0,10);
       document.getElementById("endDate").value = end.toISOString().slice(0,10);
     }
@@ -75,9 +80,18 @@
         return;
       }
 
+      if (!API_URL || API_URL.indexOf("YOUR_") === 0) {
+        resultDiv.innerHTML = `<p class="error">請先在程式內設定 API_URL（YOUR_DEPLOYED_WEB_APP_URL）。</p>`;
+        return;
+      }
+
       try {
         const url = `${API_URL}?memberID=${encodeURIComponent(memberID)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
         const resp = await fetch(url);
+        if (!resp.ok) {
+          resultDiv.innerHTML = `<p class="error">伺服器回傳錯誤（HTTP ${resp.status}）。請檢查 Web App 部署與權限。</p>`;
+          return;
+        }
         const data = await resp.json();
 
         if (data.error) {
@@ -88,9 +102,7 @@
         const html = `
           <div class="balance">目前餘額：$${escapeHtml(data.currentBalance)}</div>
           <div class="memberinfo">
-            會員等級：${escapeHtml(data.memberLevel)}　
-            ｜　會員折扣：${escapeHtml(data.memberDiscount)}　
-            ｜　到期日：${escapeHtml(data.memberExpiry)}
+            會員等級：${escapeHtml(data.memberLevel)}　｜　會員折扣：${escapeHtml(data.memberDiscount)}　｜　到期日：${escapeHtml(data.memberExpiry)}
           </div>
           <div class="summary">區間儲值：$${escapeHtml(data.rangeDeposit)}　｜　區間紅利：$${escapeHtml(data.rangeBonus)}</div>
           <div class="summary" style="font-size:14px;">歷史總儲值：$${escapeHtml(data.totalDeposit)}　｜　歷史總紅利：$${escapeHtml(data.totalBonus)}</div>
@@ -99,7 +111,7 @@
         resultDiv.innerHTML = html;
 
       } catch (err) {
-        resultDiv.innerHTML = `<p class="error">查詢失敗：${escapeHtml(err.message)}</p>`;
+        resultDiv.innerHTML = `<p class="error">查詢失敗：${escapeHtml(err && err.message ? err.message : String(err))}</p>`;
       }
     }
 
