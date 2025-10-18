@@ -13,7 +13,7 @@
     button:hover { background:#005fcc; }
     .result { margin-top:20px; }
     .error { color:#d32f2f; text-align:center; font-weight:bold; }
-    .balance { text-align:center; font-size:18px; font-weight:bold; color:#007bff; margin-top:10px; }
+    .balance, .summary { text-align:center; font-size:18px; font-weight:bold; color:#007bff; margin-top:10px; }
     table { width:100%; border-collapse:collapse; margin-top:15px; background:white; }
     th, td { border:1px solid #ddd; padding:8px; text-align:center; font-size:13px; }
     th { background:#f1f3f5; }
@@ -43,7 +43,7 @@
   <div id="result" class="result"></div>
 
   <script>
-    // 請改成你自己的 Apps Script Web App URL
+    // ✅ 改成你自己的 Apps Script Web App URL
     const API_URL = "https://script.google.com/macros/s/AKfycbyUeVBMX22rvJlsDVFai1VUWoqzivaXrK0x-1DV-9TlTkZWxbmltrPtNPL9NaQStbIw/exec";
 
     function escapeHtml(str) {
@@ -91,9 +91,16 @@
         }
 
         const rows = data.transactions || [];
-        const balance = data.currentBalance;
-        let html = `<div class="balance">目前餘額：$${escapeHtml(String(balance))}</div>`;
-        html += `<p style="text-align:center;">共 ${rows.length} 筆交易紀錄</p>`;
+        const balance = data.currentBalance || 0;
+        const totalDeposit = data.totalDeposit || 0;
+        const totalBonus = data.totalBonus || 0;
+
+        let html = `
+          <div class="balance">目前餘額：$${escapeHtml(String(balance))}</div>
+          <div class="summary">總儲值金額：$${escapeHtml(String(totalDeposit))}　｜　總紅利金額：$${escapeHtml(String(totalBonus))}</div>
+          <p style="text-align:center;">共 ${rows.length} 筆交易紀錄</p>
+        `;
+
         html += `<table><tr><th>日期</th><th>訂單號</th><th>儲值金</th><th>紅利</th><th>扣款</th><th>特殊調整</th><th>餘額</th></tr>`;
         html += rows.map(r => `
           <tr>
@@ -108,6 +115,7 @@
         `).join('');
         html += `</table>`;
         resultDiv.innerHTML = html;
+
       } catch (err) {
         console.error(err);
         resultDiv.innerHTML = `<p class="error">查詢失敗：${escapeHtml(err.message)}</p>`;
