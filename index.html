@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>KK會員儲值與交易查詢</title>
+  <title>會員儲值與交易查詢</title>
   <style>
     body { font-family:"Noto Sans TC",Arial,sans-serif; max-width:820px; margin:30px auto; padding:0 12px; background:#f8fafc; }
     h2 { text-align:center; color:#222; margin-bottom:6px; }
@@ -23,9 +23,9 @@
   </style>
 </head>
 <body>
-  <h2>KK會員儲值與交易查詢</h2>
+  <h2>會員儲值與交易查詢</h2>
 
-  <label>會員號 (例如：A123456)</label>
+  <label>會員號 (C欄，例如：1001)</label>
   <input id="memberID" placeholder="請輸入會員號">
 
   <label>開始日期</label>
@@ -45,8 +45,7 @@
   <div id="result" class="result"></div>
 
   <script>
-    // TODO: 改成你的實際 Apps Script Web App URL
-    const API_URL = "https://script.google.com/macros/s/AKfycbwqGR0DIbFQBGGLuuMmzVojaT2IfDn1YyJ1fBMprArWadpt4L9-4CrM12t1b4QdKweM/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbxN4oX15yKgiT6Q6MvretwI0fOOWBKtqfZN49DIMJPgulW2zbzag4T53ptFezFjokGy/exec"; // ← 換成你部署後的網址
 
     function escapeHtml(str) {
       return String(str || "").replace(/[&<>"']/g, s => (
@@ -56,11 +55,7 @@
 
     function applyQuickRange() {
       const range = document.getElementById("quickRange").value;
-      if (!range) {
-        document.getElementById("startDate").value = "";
-        document.getElementById("endDate").value = "";
-        return;
-      }
+      if (!range) return;
       const end = new Date();
       const start = new Date();
       start.setDate(end.getDate() - Number(range));
@@ -83,64 +78,47 @@
       try {
         const url = `${API_URL}?memberID=${encodeURIComponent(memberID)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
         const resp = await fetch(url);
-        const text = await resp.text();
-
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch (err) {
-          throw new Error("回傳資料非 JSON 格式:\n" + text);
-        }
+        const data = await resp.json();
 
         if (data.error) {
           resultDiv.innerHTML = `<p class="error">${escapeHtml(data.error)}</p>`;
           return;
         }
 
-        const rows = data.transactions || [];
-        const currentBalance = (typeof data.currentBalance !== "undefined") ? data.currentBalance : 0;
-        const totalDeposit = data.totalDeposit || 0;
-        const totalBonus = data.totalBonus || 0;
-        const rangeDeposit = data.rangeDeposit || 0;
-        const rangeBonus = data.rangeBonus || 0;
-        const level = (data.memberLevel && String(data.memberLevel).trim()) ? data.memberLevel : "—";
-        const discount = (data.memberDiscount && String(data.memberDiscount).trim()) ? data.memberDiscount : "—";
-        const expiry = (data.memberExpiry && String(data.memberExpiry).trim()) ? data.memberExpiry : "—";
-        const note = data.note || "";
-
-        let html = `<div class="balance">目前餘額：$${escapeHtml(String(currentBalance))}</div>`;
-        html += `<div class="memberinfo">會員等級：${escapeHtml(level)}　｜　會員折扣：${escapeHtml(discount)}　｜　到期日：${escapeHtml(expiry)}</div>`;
-        html += `<div class="summary">區間儲值：$${escapeHtml(String(rangeDeposit))}　｜　區間紅利：$${escapeHtml(String(rangeBonus))}</div>`;
-        html += `<div class="summary" style="font-weight:600; font-size:14px; margin-top:6px;">歷史總儲值：$${escapeHtml(String(totalDeposit))}　｜　歷史總紅利：$${escapeHtml(String(totalBonus))}</div>`;
-
-        if (note) html += `<div class="muted">${escapeHtml(note)}</div>`;
-        html += `<p style="text-align:center; margin-top:6px;">共 ${rows.length} 筆交易紀錄（顯示為篩選後結果）</p>`;
-
-        if (rows.length === 0) {
-          html += `<div style="text-align:center; margin-top:10px; color:#666;">無符合篩選的交易紀錄。</div>`;
-          resultDiv.innerHTML = html;
-          return;
-        }
-
-        html += `<table><tr><th>日期</th><th>訂單號</th><th>儲值金</th><th>紅利</th><th>扣款</th><th>特殊調整</th><th>餘額</th></tr>`;
-        html += rows.map(r => `
-          <tr>
-            <td>${escapeHtml(r.date)}</td>
-            <td>${escapeHtml(r.orderID)}</td>
-            <td>${escapeHtml(String(r.deposit))}</td>
-            <td>${escapeHtml(String(r.bonus))}</td>
-            <td>${escapeHtml(String(r.deduction || ""))}</td>
-            <td>${escapeHtml(String(r.adjustment || ""))}</td>
-            <td>${escapeHtml(String(r.balance || ""))}</td>
-          </tr>
-        `).join('');
-        html += `</table>`;
+        const html = `
+          <div class="balance">目前餘額：$${escapeHtml(data.currentBalance)}</div>
+          <div class="memberinfo">
+            會員等級：${escapeHtml(data.memberLevel)}　
+            ｜　會員折扣：${escapeHtml(data.memberDiscount)}　
+            ｜　到期日：${escapeHtml(data.memberExpiry)}
+          </div>
+          <div class="summary">區間儲值：$${escapeHtml(data.rangeDeposit)}　｜　區間紅利：$${escapeHtml(data.rangeBonus)}</div>
+          <div class="summary" style="font-size:14px;">歷史總儲值：$${escapeHtml(data.totalDeposit)}　｜　歷史總紅利：$${escapeHtml(data.totalBonus)}</div>
+          ${makeTable(data.transactions)}
+        `;
         resultDiv.innerHTML = html;
 
       } catch (err) {
-        console.error(err);
         resultDiv.innerHTML = `<p class="error">查詢失敗：${escapeHtml(err.message)}</p>`;
       }
+    }
+
+    function makeTable(rows) {
+      if (!rows || rows.length === 0) return `<p class="muted">無交易紀錄</p>`;
+      return `
+        <table>
+          <tr><th>日期</th><th>訂單號</th><th>儲值金</th><th>紅利</th><th>扣款</th><th>特殊調整</th><th>餘額</th></tr>
+          ${rows.map(r => `
+            <tr>
+              <td>${escapeHtml(r.date)}</td>
+              <td>${escapeHtml(r.orderID)}</td>
+              <td>${escapeHtml(r.deposit)}</td>
+              <td>${escapeHtml(r.bonus)}</td>
+              <td>${escapeHtml(r.deduction)}</td>
+              <td>${escapeHtml(r.adjustment)}</td>
+              <td>${escapeHtml(r.balance)}</td>
+            </tr>`).join('')}
+        </table>`;
     }
   </script>
 </body>
