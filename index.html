@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>會員儲值與交易查詢</title>
   <style>
-    body { font-family:"Noto Sans TC",Arial,sans-serif; max-width:820px; margin:30px auto; padding:0 12px; background:#f8fafc; }
+    body { font-family:"Noto Sans TC",Arial,sans-serif; max-width:860px; margin:30px auto; padding:0 12px; background:#f8fafc; }
     h2 { text-align:center; color:#222; margin-bottom:6px; }
     label { display:block; margin-top:10px; font-weight:bold; }
     input, select { width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:15px; box-sizing:border-box; }
@@ -22,7 +22,7 @@
   </style>
 </head>
 <body>
-  <h2>A會員儲值與交易查詢</h2>
+  <h2>B會員儲值與交易查詢</h2>
 
   <label>會員號 (C欄，例如：1001)</label>
   <input id="memberID" placeholder="請輸入會員號">
@@ -44,8 +44,8 @@
   <div id="result" class="result"></div>
 
   <script>
-    // TODO: 改成你自己的 Apps Script Web App URL
-    const API_URL = "https://script.google.com/macros/s/AKfycbwLPBjuaneTi0emM-Um2MkcHa1P4dbC4pv7KuiT3kwM12lg-ju0lUCDizxvrvPTEfaw/exec";
+    // 請改成你部署的 Apps Script 網址
+    const API_URL = "https://script.google.com/macros/s/AKfycbwrohUL-Barqw63A8FgWp_0s1aRTUW18U30StiHTGeJO96u3-Ipfe7l2uiXxrHLhIkU/exec";
 
     function escapeHtml(str) {
       return String(str || "").replace(/[&<>"']/g, s => (
@@ -63,7 +63,6 @@
       const end = new Date();
       const start = new Date();
       start.setDate(end.getDate() - Number(range));
-      // toISOString -> yyyy-mm-dd
       document.getElementById("startDate").value = start.toISOString().slice(0,10);
       document.getElementById("endDate").value = end.toISOString().slice(0,10);
     }
@@ -97,25 +96,23 @@
           return;
         }
 
-        // 讀取值（後端回傳包含 range / total / currentBalance）
         const rows = data.transactions || [];
         const currentBalance = data.currentBalance || 0;
-        const totalDeposit = data.totalDeposit || 0;    // 全部歷史
-        const totalBonus = data.totalBonus || 0;        // 全部歷史
-        const rangeDeposit = data.rangeDeposit || 0;    // 篩選後區間
-        const rangeBonus = data.rangeBonus || 0;
+        const totalDeposit = data.totalDeposit || 0;
+        const totalBonus = data.totalBonus || 0;
+        const totalDiscountAmount = data.totalDiscountAmount || 0;
+        const memberLevel = data.memberLevel || "-";
+        const memberDiscount = data.memberDiscount || "-";
+        const memberExpire = data.memberExpire || "-";
         const note = data.note || "";
 
         let html = `<div class="balance">目前餘額：$${escapeHtml(String(currentBalance))}</div>`;
+        html += `<div class="summary">會員等級：${escapeHtml(memberLevel)}　｜　折扣：${escapeHtml(memberDiscount)}%　｜　到期日：${escapeHtml(memberExpire)}</div>`;
+        html += `<div class="summary">歷史儲值總額：$${escapeHtml(String(totalDeposit))}　｜　歷史紅利總額：$${escapeHtml(String(totalBonus))}　｜　歷史折扣總額：$${escapeHtml(String(totalDiscountAmount))}</div>`;
 
-        html += `<div class="summary">區間儲值：$${escapeHtml(String(rangeDeposit))}　｜　區間紅利：$${escapeHtml(String(rangeBonus))}</div>`;
-        html += `<div class="summary" style="font-weight:600; font-size:14px; margin-top:6px;">歷史總儲值：$${escapeHtml(String(totalDeposit))}　｜　歷史總紅利：$${escapeHtml(String(totalBonus))}</div>`;
+        if (note) html += `<div class="muted">${escapeHtml(note)}</div>`;
 
-        if (note) {
-          html += `<div class="muted">${escapeHtml(note)}</div>`;
-        }
-
-        html += `<p style="text-align:center; margin-top:6px;">共 ${rows.length} 筆交易紀錄（顯示為篩選後結果）</p>`;
+        html += `<p style="text-align:center; margin-top:6px;">共 ${rows.length} 筆交易紀錄</p>`;
 
         if (rows.length === 0) {
           html += `<div style="text-align:center; margin-top:10px; color:#666;">無符合篩選的交易紀錄。</div>`;
@@ -123,18 +120,30 @@
           return;
         }
 
-        html += `<table><tr><th>日期</th><th>訂單號</th><th>儲值金</th><th>紅利</th><th>扣款</th><th>特殊調整</th><th>餘額</th></tr>`;
+        html += `<table><tr>
+          <th>日期</th>
+          <th>訂單號</th>
+          <th>儲值金</th>
+          <th>紅利</th>
+          <th>扣款金額</th>
+          <th>折扣金額</th>
+          <th>特殊調整</th>
+          <th>餘額</th>
+        </tr>`;
+
         html += rows.map(r => `
           <tr>
             <td>${escapeHtml(r.date)}</td>
             <td>${escapeHtml(r.orderID)}</td>
             <td>${escapeHtml(String(r.deposit))}</td>
             <td>${escapeHtml(String(r.bonus))}</td>
-            <td>${escapeHtml(String(r.deduction || ""))}</td>
-            <td>${escapeHtml(String(r.adjustment || ""))}</td>
-            <td>${escapeHtml(String(r.balance || ""))}</td>
+            <td>${escapeHtml(String(r.deduction))}</td>
+            <td>${escapeHtml(String(r.discountAmount))}</td>
+            <td>${escapeHtml(String(r.adjustment))}</td>
+            <td>${escapeHtml(String(r.balance))}</td>
           </tr>
         `).join('');
+
         html += `</table>`;
         resultDiv.innerHTML = html;
 
