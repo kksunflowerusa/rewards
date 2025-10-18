@@ -5,23 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>會員儲值與交易查詢</title>
   <style>
-    body { font-family:"Noto Sans TC",Arial,sans-serif; max-width:720px; margin:30px auto; padding:0 12px; background:#f8fafc; }
-    h2 { text-align:center; color:#222; }
+    body { font-family:"Noto Sans TC",Arial,sans-serif; max-width:820px; margin:30px auto; padding:0 12px; background:#f8fafc; }
+    h2 { text-align:center; color:#222; margin-bottom:6px; }
     label { display:block; margin-top:10px; font-weight:bold; }
     input, select { width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:15px; box-sizing:border-box; }
     button { width:100%; margin-top:10px; padding:10px; background:#007bff; color:white; border:none; border-radius:6px; font-size:15px; cursor:pointer; }
     button:hover { background:#005fcc; }
     .result { margin-top:20px; }
     .error { color:#d32f2f; text-align:center; font-weight:bold; }
-    .balance, .summary { text-align:center; font-size:18px; font-weight:bold; color:#007bff; margin-top:10px; }
+    .balance, .summary { text-align:center; font-size:16px; font-weight:bold; color:#007bff; margin-top:10px; }
+    .muted { text-align:center; color:#666; font-size:13px; margin-top:6px; }
     table { width:100%; border-collapse:collapse; margin-top:15px; background:white; }
     th, td { border:1px solid #ddd; padding:8px; text-align:center; font-size:13px; }
     th { background:#f1f3f5; }
-    @media (max-width:600px) { th, td { font-size:12px; padding:6px; } }
+    @media (max-width:720px) { th, td { font-size:12px; padding:6px; } }
   </style>
 </head>
 <body>
-  <h2>A會員儲值與交易查詢</h2>
+  <h2>B會員儲值與交易查詢</h2>
 
   <label>會員號 (例如：A1234567890)</label>
   <input id="memberID" placeholder="請輸入會員號">
@@ -43,8 +44,8 @@
   <div id="result" class="result"></div>
 
   <script>
-    // ✅ 改成你自己的 Apps Script Web App URL
-    const API_URL = "https://script.google.com/macros/s/AKfycbwdQ6bpnxW9kuu7o_rqSGH6y8_BUtvTlbxfzdg0lhGIs5Bn9YT1CPBvWqSL31xbqGUc/exec";
+    // TODO: 改成你自己的 Apps Script Web App URL
+    const API_URL = "https://script.google.com/macros/s/AKfycbyUeVBMX22rvJlsDVFai1VUWoqzivaXrK0x-1DV-9TlTkZWxbmltrPtNPL9NaQStbIw/exec";
 
     function escapeHtml(str) {
       return String(str || "").replace(/[&<>"']/g, s => (
@@ -54,10 +55,15 @@
 
     function applyQuickRange() {
       const range = document.getElementById("quickRange").value;
-      if (!range) return;
+      if (!range) {
+        document.getElementById("startDate").value = "";
+        document.getElementById("endDate").value = "";
+        return;
+      }
       const end = new Date();
       const start = new Date();
       start.setDate(end.getDate() - Number(range));
+      // toISOString -> yyyy-mm-dd
       document.getElementById("startDate").value = start.toISOString().slice(0,10);
       document.getElementById("endDate").value = end.toISOString().slice(0,10);
     }
@@ -78,10 +84,11 @@
         const url = `${API_URL}?memberID=${encodeURIComponent(memberID)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
         const resp = await fetch(url);
         const text = await resp.text();
+
         let data;
         try {
           data = JSON.parse(text);
-        } catch {
+        } catch (err) {
           throw new Error("回傳資料非 JSON 格式:\n" + text);
         }
 
@@ -90,27 +97,42 @@
           return;
         }
 
+        // 讀取值（後端回傳包含 range / total / currentBalance）
         const rows = data.transactions || [];
-        const balance = data.currentBalance || 0;
-        const totalDeposit = data.totalDeposit || 0;
-        const totalBonus = data.totalBonus || 0;
+        const currentBalance = data.currentBalance || 0;
+        const totalDeposit = data.totalDeposit || 0;    // 全部歷史
+        const totalBonus = data.totalBonus || 0;        // 全部歷史
+        const rangeDeposit = data.rangeDeposit || 0;    // 篩選後區間
+        const rangeBonus = data.rangeBonus || 0;
+        const note = data.note || "";
 
-        let html = `
-          <div class="balance">目前餘額：$${escapeHtml(String(balance))}</div>
-          <div class="summary">總儲值金額：$${escapeHtml(String(totalDeposit))}　｜　總紅利金額：$${escapeHtml(String(totalBonus))}</div>
-          <p style="text-align:center;">共 ${rows.length} 筆交易紀錄</p>
-        `;
+        let html = `<div class="balance">目前餘額：$${escapeHtml(String(currentBalance))}</div>`;
+
+        html += `<div class="summary">區間儲值：$${escapeHtml(String(rangeDeposit))}　｜　區間紅利：$${escapeHtml(String(rangeBonus))}</div>`;
+        html += `<div class="summary" style="font-weight:600; font-size:14px; margin-top:6px;">歷史總儲值：$${escapeHtml(String(totalDeposit))}　｜　歷史總紅利：$${escapeHtml(String(totalBonus))}</div>`;
+
+        if (note) {
+          html += `<div class="muted">${escapeHtml(note)}</div>`;
+        }
+
+        html += `<p style="text-align:center; margin-top:6px;">共 ${rows.length} 筆交易紀錄（顯示為篩選後結果）</p>`;
+
+        if (rows.length === 0) {
+          html += `<div style="text-align:center; margin-top:10px; color:#666;">無符合篩選的交易紀錄。</div>`;
+          resultDiv.innerHTML = html;
+          return;
+        }
 
         html += `<table><tr><th>日期</th><th>訂單號</th><th>儲值金</th><th>紅利</th><th>扣款</th><th>特殊調整</th><th>餘額</th></tr>`;
         html += rows.map(r => `
           <tr>
             <td>${escapeHtml(r.date)}</td>
             <td>${escapeHtml(r.orderID)}</td>
-            <td>${escapeHtml(r.deposit)}</td>
-            <td>${escapeHtml(r.bonus)}</td>
-            <td>${escapeHtml(r.deduction)}</td>
-            <td>${escapeHtml(r.adjustment)}</td>
-            <td>${escapeHtml(r.balance)}</td>
+            <td>${escapeHtml(String(r.deposit))}</td>
+            <td>${escapeHtml(String(r.bonus))}</td>
+            <td>${escapeHtml(String(r.deduction || ""))}</td>
+            <td>${escapeHtml(String(r.adjustment || ""))}</td>
+            <td>${escapeHtml(String(r.balance || ""))}</td>
           </tr>
         `).join('');
         html += `</table>`;
