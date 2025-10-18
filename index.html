@@ -1,136 +1,242 @@
+<!-- Index.html -->
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>會員儲值與交易查詢</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>會員查詢系統</title>
   <style>
-    body { font-family:"Noto Sans TC",Arial,sans-serif; max-width:820px; margin:30px auto; padding:0 12px; background:#f8fafc; }
-    h2 { text-align:center; color:#222; margin-bottom:6px; }
-    label { display:block; margin-top:10px; font-weight:bold; }
-    input, select { width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:15px; box-sizing:border-box; }
-    button { width:100%; margin-top:10px; padding:10px; background:#007bff; color:white; border:none; border-radius:6px; font-size:15px; cursor:pointer; }
-    button:hover { background:#005fcc; }
-    .result { margin-top:20px; }
-    .error { color:#d32f2f; text-align:center; font-weight:bold; }
-    .balance, .summary { text-align:center; font-size:16px; font-weight:bold; color:#007bff; margin-top:10px; }
-    .muted { text-align:center; color:#666; font-size:13px; margin-top:6px; }
-    table { width:100%; border-collapse:collapse; margin-top:15px; background:white; }
-    th, td { border:1px solid #ddd; padding:8px; text-align:center; font-size:13px; }
-    th { background:#f1f3f5; }
-    @media (max-width:720px) { th, td { font-size:12px; padding:6px; } }
+    body { font-family: Arial, "Noto Sans TC", sans-serif; max-width: 1100px; margin: 18px auto; padding: 10px; }
+    .card { background: #fff; border-radius: 8px; padding: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 16px; }
+    label { display:block; margin-top:8px; font-weight:600; }
+    input[type="text"], input[type="date"], select {
+      padding:8px; width:100%; box-sizing:border-box; margin-top:6px;
+      border:1px solid #ddd; border-radius:6px;
+    }
+    .grid { display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
+    .controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px; }
+    button { padding:10px 14px; border-radius:8px; border: none; cursor:pointer; background:#1976d2; color:white; font-weight:600; }
+    button.secondary { background:#6c757d; }
+    table { width:100%; border-collapse:collapse; margin-top:12px; }
+    th, td { border:1px solid #eee; padding:8px; text-align:left; font-size:14px; }
+    th { background:#f7f7f7; font-weight:700; }
+    .summary { display:flex; gap:12px; flex-wrap:wrap; }
+    .summary .item { background:#fafafa; padding:8px 12px; border-radius:6px; border:1px solid #eee; min-width:200px; }
+    .muted { color:#666; font-size:13px;}
+    @media (max-width:800px) {
+      .grid { grid-template-columns: 1fr 1fr; }
+      .summary .item { min-width:140px; }
+    }
+    @media (max-width:480px) {
+      .grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
-  <h2>B會員儲值與交易查詢</h2>
+  <h2>會員查詢系統</h2>
 
-  <label>會員號 (例如：A1234567890)</label>
-  <input id="memberID" placeholder="請輸入會員號">
+  <!-- 🔸 查詢區 -->
+  <div class="card">
+    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+      <div style="flex:1; min-width:220px;">
+        <label>會員帳號 (Member ID)</label>
+        <input id="memberId" type="text" placeholder="請輸入會員帳號 (必填)" />
+      </div>
 
-  <label>開始日期</label>
-  <input id="startDate" type="date">
+      <div style="min-width:160px;">
+        <label>開始日期 (Start Date)</label>
+        <input id="startDate" type="date" />
+      </div>
+      <div style="min-width:160px;">
+        <label>結束日期 (End Date)</label>
+        <input id="endDate" type="date" />
+      </div>
 
-  <label>結束日期</label>
-  <input id="endDate" type="date">
+      <div style="min-width:200px;">
+        <label>快捷查詢 (Quick)</label>
+        <select id="quickSelect">
+          <option value="">-- 無 --</option>
+          <option value="30">近 30 天</option>
+          <option value="60">近 60 天</option>
+        </select>
+      </div>
 
-  <label>快捷查詢</label>
-  <select id="quickRange" onchange="applyQuickRange()">
-    <option value="">--請選擇--</option>
-    <option value="30">近30天</option>
-    <option value="60">近60天</option>
-  </select>
+      <div style="margin-left:auto;">
+        <label style="visibility:hidden">_</label>
+        <div class="controls">
+          <button id="btnQuery">查詢</button>
+          <button id="btnClear" class="secondary">清除</button>
+        </div>
+      </div>
+    </div>
 
-  <button onclick="search()">查詢</button>
-  <div id="result" class="result"></div>
+    <div style="margin-top:12px;">
+      <div class="muted">說明：若選擇快捷查詢（近30/60天），會自動帶入開始日期；若同時設定開始/結束日期，則以手動設定為準。</div>
+    </div>
+  </div>
+
+  <!-- 🔸 查詢結果區 -->
+  <div id="resultArea" style="display:none;">
+    <div class="card">
+      <h3>會員資訊</h3>
+      <div class="summary" id="summaryBox">
+        <!-- summary items append here -->
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>查詢結果明細</h3>
+      <div id="tableContainer">
+        <table id="resultTable">
+          <thead>
+            <tr>
+              <th>日期</th>
+              <th>訂單號碼</th>
+              <th>儲值金</th>
+              <th>會員紅利</th>
+              <th>扣款金額</th>
+              <th>折扣金額</th>
+              <th>特殊調整</th>
+              <th>餘額</th>
+            </tr>
+          </thead>
+          <tbody id="resultTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbzwNEo_2iHJfUR4xFGdygW4_Jr4kE03w2YJDsNzEhnzkiTUxgwlX_uuxHi9RswEIoAi/exec";
+    function $(id){ return document.getElementById(id); }
 
-    function escapeHtml(str) {
-      return String(str || "").replace(/[&<>"']/g, s => (
-        { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[s]
-      ));
-    }
+    const btnQuery = $('btnQuery');
+    const btnClear = $('btnClear');
 
-    function applyQuickRange() {
-      const range = document.getElementById("quickRange").value;
-      if (!range) {
-        document.getElementById("startDate").value = "";
-        document.getElementById("endDate").value = "";
+    // 📌 查詢事件
+    btnQuery.addEventListener('click', () => {
+      const memberId = $('memberId').value.trim();
+      const quick = $('quickSelect').value;
+      let startDate = $('startDate').value;
+      let endDate = $('endDate').value;
+
+      // 快捷查詢
+      if (quick && !startDate) {
+        const days = parseInt(quick, 10);
+        const now = new Date();
+        const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1));
+        const fmt = d => {
+          const y = d.getFullYear();
+          const m = ('0' + (d.getMonth() + 1)).slice(-2);
+          const dd = ('0' + d.getDate()).slice(-2);
+          return `${y}-${m}-${dd}`;
+        };
+        startDate = fmt(start);
+        if (!endDate) endDate = fmt(new Date());
+      }
+
+      if (!memberId) {
+        alert('請輸入會員帳號 (Member ID)。');
         return;
       }
-      const end = new Date();
-      const start = new Date();
-      start.setDate(end.getDate() - Number(range));
-      document.getElementById("startDate").value = start.toISOString().slice(0,10);
-      document.getElementById("endDate").value = end.toISOString().slice(0,10);
+
+      btnQuery.disabled = true;
+      btnQuery.textContent = '查詢中...';
+
+      google.script.run
+        .withSuccessHandler(renderResult)
+        .withFailureHandler(err => {
+          btnQuery.disabled = false;
+          btnQuery.textContent = '查詢';
+          alert('查詢失敗：' + (err && err.message ? err.message : err));
+        })
+        .queryMemberReport(memberId, startDate || '', endDate || '');
+    });
+
+    // 📌 清除事件
+    btnClear.addEventListener('click', () => {
+      $('memberId').value = '';
+      $('startDate').value = '';
+      $('endDate').value = '';
+      $('quickSelect').value = '';
+      $('resultArea').style.display = 'none';
+      $('resultTbody').innerHTML = '';
+      $('summaryBox').innerHTML = '';
+    });
+
+    // 數字格式
+    function formatNumber(n) {
+      if (n === '' || n === null || n === undefined) return '';
+      if (Math.abs(n - Math.round(n)) > 0.0001)
+        return Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return Number(n).toLocaleString();
     }
 
-    async function search() {
-      const memberID = document.getElementById('memberID').value.trim();
-      const startDate = document.getElementById('startDate').value;
-      const endDate = document.getElementById('endDate').value;
-      const resultDiv = document.getElementById('result');
-      resultDiv.innerHTML = "查詢中...";
+    // 結果渲染
+    function renderResult(resp) {
+      btnQuery.disabled = false;
+      btnQuery.textContent = '查詢';
 
-      if (!memberID) {
-        resultDiv.innerHTML = `<p class="error">請輸入會員號。</p>`;
+      if (!resp) {
+        alert('沒有回傳資料');
         return;
       }
 
-      try {
-        const url = `${API_URL}?memberID=${encodeURIComponent(memberID)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
-        const resp = await fetch(url);
-        const text = await resp.text();
+      const rows = resp.rows || [];
+      const ag = resp.aggregates || {};
 
-        let data;
-        try { data = JSON.parse(text); }
-        catch (err) { throw new Error("回傳資料非 JSON 格式:\n" + text); }
+      $('resultArea').style.display = 'block';
 
-        if (data.error) {
-          resultDiv.innerHTML = `<p class="error">${escapeHtml(data.error)}</p>`;
-          return;
-        }
+      // 📊 Summary
+      const sb = $('summaryBox');
+      sb.innerHTML = '';
+      const addItem = (title, value) => {
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `<div style="font-weight:700">${title}</div><div style="margin-top:6px">${value}</div>`;
+        sb.appendChild(div);
+      };
 
-        const rows = data.transactions || [];
-        const currentBalance = Number(data.currentBalance || 0).toFixed(2);
-        const totalDeposit = Number(data.totalDeposit || 0).toFixed(2);
-        const totalBonus = Number(data.totalBonus || 0).toFixed(2);
-        const rangeDeposit = Number(data.rangeDeposit || 0).toFixed(2);
-        const rangeBonus = Number(data.rangeBonus || 0).toFixed(2);
-        const note = data.note || "";
+      addItem('儲值總餘額 (最後餘額)', formatNumber(ag.lastBalance));
+      addItem('會員等級', ag.membership || '');
+      addItem('會員折扣 %', ag.membershipDiscountPercent || '');
+      addItem('會員到期日', ag.membershipExpiration || '');
+      addItem('歷史總儲值 (E欄)', formatNumber(ag.totalDepositHistory));
+      addItem('歷史總紅利 (F欄)', formatNumber(ag.totalBonusHistory));
+      addItem('歷史訂單金額 (G欄)', formatNumber(ag.totalAmountHistory));
+      addItem('歷史折扣金額 (H欄)', formatNumber(ag.totalDiscountHistory));
 
-        let html = `<div class="balance">目前餘額：$${escapeHtml(currentBalance)}</div>`;
-        html += `<div class="summary">區間儲值：$${escapeHtml(rangeDeposit)}　｜　區間紅利：$${escapeHtml(rangeBonus)}</div>`;
-        html += `<div class="summary" style="font-weight:600; font-size:14px; margin-top:6px;">歷史總儲值：$${escapeHtml(totalDeposit)}　｜　歷史總紅利：$${escapeHtml(totalBonus)}</div>`;
-        if (note) html += `<div class="muted">${escapeHtml(note)}</div>`;
-        html += `<p style="text-align:center; margin-top:6px;">共 ${rows.length} 筆交易紀錄（顯示為篩選後結果）</p>`;
-
-        if (rows.length === 0) {
-          html += `<div style="text-align:center; margin-top:10px; color:#666;">無符合篩選的交易紀錄。</div>`;
-          resultDiv.innerHTML = html;
-          return;
-        }
-
-        html += `<table><tr><th>日期</th><th>訂單號</th><th>儲值金</th><th>紅利</th><th>扣款</th><th>特殊調整</th><th>餘額</th></tr>`;
-        html += rows.map(r => `
-          <tr>
-            <td>${escapeHtml(r.date)}</td>
-            <td>${escapeHtml(r.orderID)}</td>
-            <td>${escapeHtml(Number(r.deposit).toFixed(2))}</td>
-            <td>${escapeHtml(Number(r.bonus).toFixed(2))}</td>
-            <td>${escapeHtml(String(r.deduction || ""))}</td>
-            <td>${escapeHtml(String(r.adjustment || ""))}</td>
-            <td>${escapeHtml(Number(r.balance).toFixed(2))}</td>
-          </tr>
-        `).join('');
-        html += `</table>`;
-        resultDiv.innerHTML = html;
-
-      } catch (err) {
-        console.error(err);
-        resultDiv.innerHTML = `<p class="error">查詢失敗：${escapeHtml(err.message)}</p>`;
+      // 📋 Table
+      const tbody = $('resultTbody');
+      tbody.innerHTML = '';
+      if (rows.length === 0) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td colspan="8" style="text-align:center;">查無資料</td>`;
+        tbody.appendChild(tr);
+      } else {
+        rows.forEach(r => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${r.date || ''}</td>
+            <td>${escapeHtml(r.orderId || '')}</td>
+            <td style="text-align:right">${formatNumber(r.deposit)}</td>
+            <td style="text-align:right">${formatNumber(r.bonus)}</td>
+            <td style="text-align:right">${formatNumber(r.amount)}</td>
+            <td style="text-align:right">${formatNumber(r.discount)}</td>
+            <td style="text-align:right">${formatNumber(r.adjustment)}</td>
+            <td style="text-align:right">${r.balance === '' ? '' : formatNumber(r.balance)}</td>
+          `;
+          tbody.appendChild(tr);
+        });
       }
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#39;');
     }
   </script>
 </body>
