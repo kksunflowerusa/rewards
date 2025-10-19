@@ -2,21 +2,26 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
-  <title>會員查詢系統 (外部)</title>
+  <title>會員查詢系統 (進階查詢)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    body { font-family: "Microsoft JhengHei", Arial; background:#f5f7fb; padding:20px; max-width:720px; margin:auto; }
+    body { font-family:"Microsoft JhengHei", Arial; background:#f5f7fb; padding:20px; max-width:960px; margin:auto; }
     h1 { text-align:center; margin-bottom:18px; }
     label { display:block; margin-top:10px; font-weight:700; }
-    input[type="text"] { width:100%; padding:10px; box-sizing:border-box; font-size:14px; border-radius:6px; border:1px solid #ccc; }
+    input, select { width:100%; padding:10px; box-sizing:border-box; font-size:14px; border-radius:6px; border:1px solid #ccc; }
+    .row-flex { display:flex; gap:10px; }
+    .row-flex > div { flex:1; }
     button { margin-top:12px; width:100%; padding:12px; border-radius:8px; border:none; background:#1976d2; color:#fff; font-size:16px; cursor:pointer; }
     button:hover { background:#125a9c; }
-    .result { margin-top:18px; background:#fff; border:1px solid #e1e4ea; border-radius:8px; padding:14px; }
-    .row { margin-bottom:10px; }
+    .summary { margin-top:18px; background:#fff; border:1px solid #e1e4ea; border-radius:8px; padding:14px; }
+    .summary .item { margin-bottom:6px; }
     .label { color:#666; font-size:13px; }
     .value { font-weight:700; font-size:15px; margin-top:4px; word-break:break-all; }
+
+    table { width:100%; border-collapse:collapse; margin-top:18px; background:#fff; }
+    th, td { padding:8px; border:1px solid #ddd; font-size:14px; text-align:center; }
+    th { background:#f0f0f0; }
     .error { color:#b00020; font-weight:700; text-align:center; }
-    .debug { margin-top:10px; font-size:12px; color:#444; background:#f0f0f0; padding:8px; border-radius:6px; white-space:pre-wrap; }
     .small { font-size:12px; color:#666; text-align:center; margin-top:8px; }
   </style>
 </head>
@@ -26,77 +31,136 @@
   <label for="memberId">會員帳號</label>
   <input id="memberId" type="text" placeholder="例如：user123">
 
-  <button id="btnQuery" onclick="queryMember()">查詢會員資訊</button>
+  <div class="row-flex">
+    <div>
+      <label for="startDate">開始日期</label>
+      <input id="startDate" type="date">
+    </div>
+    <div>
+      <label for="endDate">結束日期</label>
+      <input id="endDate" type="date">
+    </div>
+  </div>
 
-  <div id="output" class="result" style="display:none;"></div>
+  <label for="quickRange">快捷查詢</label>
+  <select id="quickRange" onchange="setQuickRange()">
+    <option value="">請選擇</option>
+    <option value="30">近30天</option>
+    <option value="60">近60天</option>
+  </select>
+
+  <button onclick="queryMember()">查詢會員資料</button>
+
+  <div id="outputSummary" class="summary" style="display:none;"></div>
+
+  <div id="outputTable"></div>
 
   <script>
-    // <-- 把下面改成你自己的 Apps Script exec URL（你提供的 URL）
-    const API_URL = "https://script.google.com/macros/s/AKfycbw-2iyQqU7PXL-FGgIPJ7cGViQxvVHwv8A8WLmx77OuCvmLgLtc0G6E6SQo3Jm5EOTQ/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbxHx0HJXixYy_XBhdHmNMX_4vUdGsyx9_sai6cNvIbJCPTpoFv5YjAuxg6yB3L75BQC/exec";
+
+    function setQuickRange() {
+      const val = document.getElementById('quickRange').value;
+      if (!val) return;
+      const today = new Date();
+      const endStr = today.toISOString().slice(0, 10);
+      const start = new Date(today);
+      start.setDate(today.getDate() - parseInt(val));
+      const startStr = start.toISOString().slice(0, 10);
+      document.getElementById('startDate').value = startStr;
+      document.getElementById('endDate').value = endStr;
+    }
 
     async function queryMember() {
       const memberId = document.getElementById('memberId').value.trim();
-      const out = document.getElementById('output');
-      out.style.display = 'block';
-      out.innerHTML = '<div class="small">查詢中…</div>';
+      const startDate = document.getElementById('startDate').value;
+      const endDate = document.getElementById('endDate').value;
+
+      const outSummary = document.getElementById('outputSummary');
+      const outTable = document.getElementById('outputTable');
+
+      outSummary.style.display = 'block';
+      outSummary.innerHTML = `<div class="small">查詢中…</div>`;
+      outTable.innerHTML = '';
 
       if (!memberId) {
-        out.innerHTML = '<div class="error">請輸入會員帳號</div>';
+        outSummary.innerHTML = `<div class="error">請輸入會員帳號</div>`;
         return;
       }
 
       try {
-        const resp = await fetch(`${API_URL}?memberId=${encodeURIComponent(memberId)}`, {
-          method: 'GET',
-          // mode: 'cors' // 預設為 cors，Apps Script Web App 通常允許 GET
-        });
-
-        // 先取得 raw text（因為有時 server 可能回 HTML 而不是 JSON）
+        const resp = await fetch(`${API_URL}?memberId=${encodeURIComponent(memberId)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`);
         const text = await resp.text();
-
-        // 嘗試 parse 成 JSON
         let data = null;
         try {
           data = JSON.parse(text);
-        } catch (err) {
-          // 若 parse 失敗，顯示伺服器回傳內容供偵錯
-          out.innerHTML = `<div class="error">伺服器回傳非 JSON（解析失敗）</div>
-                           <div class="debug">伺服器原始回應:\n${escapeHtml(text)}</div>`;
+        } catch {
+          outSummary.innerHTML = `<div class="error">伺服器回傳非 JSON 格式</div>`;
           return;
         }
 
-        // 如果 data.success 為 false，顯示後端錯誤訊息
-        if (!data || data.success === false) {
-          const msg = (data && data.message) ? data.message : '查詢失敗（server 回傳）';
-          out.innerHTML = `<div class="error">${escapeHtml(msg)}</div>
-                           <div class="debug">伺服器回應 JSON:\n${escapeHtml(JSON.stringify(data, null, 2))}</div>`;
+        if (!data.success) {
+          outSummary.innerHTML = `<div class="error">${data.message || '查詢失敗'}</div>`;
           return;
         }
 
-        // 成功時顯示內容
-        let html = '';
-        html += buildRow('會員帳號', data.memberId || memberId);
-        html += buildRow('最後總餘額', data.lastBalance !== null ? data.lastBalance : '無資料');
-        html += buildRow('最後餘額日期', data.lastBalanceDate || '無資料');
-        html += buildRow('會員等級', data.membership || '無資料');
-        html += buildRow('會員折扣 %', data.discountPercent || '無資料');
-        html += buildRow('會員到期日', data.expirationDate || '無資料');
-        html += `<div class="small">共找到 ${data.foundRows || 0} 筆符合資料</div>`;
+        // ===== 顯示上方會員資訊 =====
+        outSummary.innerHTML = `
+          <div class="item"><span class="label">會員帳號</span><div class="value">${escapeHtml(data.memberId)}</div></div>
+          <div class="item"><span class="label">最後總餘額</span><div class="value">${escapeHtml(data.lastBalance ?? '無資料')}</div></div>
+          <div class="item"><span class="label">會員等級</span><div class="value">${escapeHtml(data.membership ?? '無資料')}</div></div>
+          <div class="item"><span class="label">會員折扣 %</span><div class="value">${escapeHtml(data.discountPercent ?? '無資料')}</div></div>
+          <div class="item"><span class="label">會員到期日</span><div class="value">${escapeHtml(data.expirationDate ?? '無資料')}</div></div>
+          <div class="small">共找到 ${data.details.length} 筆交易資料（符合篩選區間）</div>
+        `;
 
-        out.innerHTML = html;
+        // ===== 顯示交易明細表格 =====
+        if (data.details.length > 0) {
+          let tableHtml = `
+            <table>
+              <thead>
+                <tr>
+                  <th>日期</th>
+                  <th>訂單號碼</th>
+                  <th>儲值金</th>
+                  <th>會員紅利</th>
+                  <th>扣款金額</th>
+                  <th>折扣金額</th>
+                  <th>特殊調整</th>
+                  <th>餘額</th>
+                </tr>
+              </thead>
+              <tbody>
+          `;
+          data.details.forEach(item => {
+            tableHtml += `
+              <tr>
+                <td>${escapeHtml(item.date)}</td>
+                <td>${escapeHtml(item.orderId)}</td>
+                <td>${escapeHtml(item.deposit)}</td>
+                <td>${escapeHtml(item.bonus)}</td>
+                <td>${escapeHtml(item.amount)}</td>
+                <td>${escapeHtml(item.discountAmount)}</td>
+                <td>${escapeHtml(item.adjustment)}</td>
+                <td>${escapeHtml(item.balance)}</td>
+              </tr>
+            `;
+          });
+          tableHtml += '</tbody></table>';
+          outTable.innerHTML = tableHtml;
+        } else {
+          outTable.innerHTML = `<div class="small">此區間內無交易資料</div>`;
+        }
+
       } catch (err) {
-        out.innerHTML = `<div class="error">發生網路錯誤或 CORS 被拒絕</div>
-                         <div class="debug">${escapeHtml(String(err))}</div>`;
         console.error(err);
+        outSummary.innerHTML = `<div class="error">發生錯誤，請稍後再試</div>`;
       }
     }
 
-    function buildRow(label, value) {
-      return `<div class="row"><div class="label">${escapeHtml(label)}</div><div class="value">${escapeHtml(String(value))}</div></div>`;
-    }
-
     function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, function (m) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]; });
+      return String(s).replace(/[&<>"']/g, function (m) {
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];
+      });
     }
   </script>
 </body>
