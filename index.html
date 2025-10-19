@@ -22,7 +22,7 @@
   </style>
 </head>
 <body>
-  <h2>KK會員儲值與交易查詢</h2>
+  <h2>K會員儲值與交易查詢</h2>
 
   <label>會員號 (例如：A12345)</label>
   <input id="memberID" placeholder="請輸入會員號">
@@ -44,7 +44,8 @@
   <div id="result" class="result"></div>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbxmx6uzvAtLb8S9mLj_qF7ULqGOHnj_CMknJdgeAXMNcLWDlKJdyB3aHrAljDy16_VB/exec";
+    // 請改成你實際部署後的 Apps Script 網址
+    const API_URL = "https://script.google.com/macros/s/AKfycbx63M2C-5VqkZXvsjjH1IqltEFFA5jf9xM6_qNC8w3Yy6chr8j9uqBgYOwZ2eY0JcI/exec";
 
     function escapeHtml(str) {
       return String(str || "").replace(/[&<>"']/g, s => (
@@ -66,17 +67,6 @@
       document.getElementById("endDate").value = end.toISOString().slice(0,10);
     }
 
-    function formatDateString(dateStr) {
-      if (!dateStr) return "-";
-      try {
-        const d = new Date(dateStr);
-        if (isNaN(d)) return escapeHtml(dateStr);
-        return d.toISOString().slice(0, 10); // 只取 YYYY-MM-DD
-      } catch {
-        return escapeHtml(dateStr);
-      }
-    }
-
     async function search() {
       const memberID = document.getElementById('memberID').value.trim();
       const startDate = document.getElementById('startDate').value;
@@ -94,26 +84,30 @@
         const resp = await fetch(url);
         const data = await resp.json();
 
+        console.log("API 回傳：", data);  // 🔍 用於調試，查看完整回傳資料
+
         if (data.error) {
           resultDiv.innerHTML = `<p class="error">${escapeHtml(data.error)}</p>`;
           return;
         }
 
         const rows = data.transactions || [];
-        const currentBalance = data.currentBalance || 0;
-        const totalDeposit = data.totalDeposit || 0;
-        const totalBonus = data.totalBonus || 0;
-        const totalDiscountAmount = data.totalDiscountAmount || 0;
+        const currentBalance = data.currentBalance || "0";
+        const totalDeposit = data.totalDeposit || "0";
+        const totalBonus = data.totalBonus || "0";
+        const totalDiscountAmount = data.totalDiscountAmount || "0";
         const memberLevel = data.memberLevel || "-";
         const memberDiscount = data.memberDiscount || "-";
-        const memberExpire = formatDateString(data.memberExpire);
+        const memberExpire = data.memberExpire || "-";
         const note = data.note || "";
 
         let html = `<div class="balance">目前餘額：$${escapeHtml(String(currentBalance))}</div>`;
-        html += `<div class="summary">會員等級：${escapeHtml(memberLevel)}　｜　折扣：${escapeHtml(memberDiscount)}%　｜　會員到期日：${escapeHtml(memberExpire)}</div>`;
+        html += `<div class="summary">會員等級：${escapeHtml(memberLevel)}　｜　會員折扣：${escapeHtml(memberDiscount)}%　｜　會員到期日：${escapeHtml(memberExpire)}</div>`;
         html += `<div class="summary">歷史儲值總額：$${escapeHtml(String(totalDeposit))}　｜　歷史紅利總額：$${escapeHtml(String(totalBonus))}　｜　歷史折扣總額：$${escapeHtml(String(totalDiscountAmount))}</div>`;
 
-        if (note) html += `<div class="muted">${escapeHtml(note)}</div>`;
+        if (note) {
+          html += `<div class="muted">${escapeHtml(note)}</div>`;
+        }
 
         html += `<p style="text-align:center; margin-top:6px;">共 ${rows.length} 筆交易紀錄</p>`;
 
