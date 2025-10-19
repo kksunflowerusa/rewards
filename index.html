@@ -2,165 +2,151 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
-  <title>會員查詢系統 (進階查詢)</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>會員儲值與交易查詢</title>
   <style>
-    body { font-family:"Microsoft JhengHei", Arial; background:#f5f7fb; padding:20px; max-width:960px; margin:auto; }
-    h1 { text-align:center; margin-bottom:18px; }
-    label { display:block; margin-top:10px; font-weight:700; }
-    input, select { width:100%; padding:10px; box-sizing:border-box; font-size:14px; border-radius:6px; border:1px solid #ccc; }
-    .row-flex { display:flex; gap:10px; }
-    .row-flex > div { flex:1; }
-    button { margin-top:12px; width:100%; padding:12px; border-radius:8px; border:none; background:#1976d2; color:#fff; font-size:16px; cursor:pointer; }
-    button:hover { background:#125a9c; }
-    .summary { margin-top:18px; background:#fff; border:1px solid #e1e4ea; border-radius:8px; padding:14px; }
-    .summary .item { margin-bottom:6px; }
-    .label { color:#666; font-size:13px; }
-    .value { font-weight:700; font-size:15px; margin-top:4px; word-break:break-all; }
-
-    table { width:100%; border-collapse:collapse; margin-top:18px; background:#fff; }
-    th, td { padding:8px; border:1px solid #ddd; font-size:14px; text-align:center; }
-    th { background:#f0f0f0; }
-    .error { color:#b00020; font-weight:700; text-align:center; }
-    .small { font-size:12px; color:#666; text-align:center; margin-top:8px; }
+    body { font-family:"Noto Sans TC",Arial,sans-serif; max-width:860px; margin:30px auto; padding:0 12px; background:#f8fafc; }
+    h2 { text-align:center; color:#222; margin-bottom:6px; }
+    label { display:block; margin-top:10px; font-weight:bold; }
+    input, select { width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:15px; box-sizing:border-box; }
+    button { width:100%; margin-top:10px; padding:10px; background:#007bff; color:white; border:none; border-radius:6px; font-size:15px; cursor:pointer; }
+    button:hover { background:#005fcc; }
+    .result { margin-top:20px; }
+    .error { color:#d32f2f; text-align:center; font-weight:bold; }
+    .balance, .summary { text-align:center; font-size:16px; font-weight:bold; color:#007bff; margin-top:10px; }
+    .muted { text-align:center; color:#666; font-size:13px; margin-top:6px; }
+    table { width:100%; border-collapse:collapse; margin-top:15px; background:white; }
+    th, td { border:1px solid #ddd; padding:8px; text-align:center; font-size:13px; }
+    th { background:#f1f3f5; }
+    @media (max-width:720px) { th, td { font-size:12px; padding:6px; } }
   </style>
 </head>
 <body>
-  <h1>會員查詢系統</h1>
+  <h2>會員儲值與交易查詢</h2>
 
-  <label for="memberId">會員帳號</label>
-  <input id="memberId" type="text" placeholder="例如：A12345">
+  <label>會員號 (例如：A12345)</label>
+  <input id="memberID" placeholder="請輸入會員號">
 
-  <div class="row-flex">
-    <div>
-      <label for="startDate">開始日期</label>
-      <input id="startDate" type="date">
-    </div>
-    <div>
-      <label for="endDate">結束日期</label>
-      <input id="endDate" type="date">
-    </div>
-  </div>
+  <label>開始日期</label>
+  <input id="startDate" type="date">
 
-  <label for="quickRange">快捷查詢</label>
-  <select id="quickRange" onchange="setQuickRange()">
-    <option value="">請選擇</option>
+  <label>結束日期</label>
+  <input id="endDate" type="date">
+
+  <label>快捷查詢</label>
+  <select id="quickRange" onchange="applyQuickRange()">
+    <option value="">--請選擇--</option>
     <option value="30">近30天</option>
     <option value="60">近60天</option>
   </select>
 
-  <button onclick="queryMember()">查詢會員資料</button>
-
-  <div id="outputSummary" class="summary" style="display:none;"></div>
-
-  <div id="outputTable"></div>
+  <button onclick="search()">查詢</button>
+  <div id="result" class="result"></div>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbxHx0HJXixYy_XBhdHmNMX_4vUdGsyx9_sai6cNvIbJCPTpoFv5YjAuxg6yB3L75BQC/exec";
+    // ✅ 改成實際部署後的 Apps Script 網址
+    const API_URL = "https://script.google.com/macros/s/AKfycbwIFEqX5Igu-jwaWwJi1t1DuM4WYf6_E6vt0b19Ibb80e51cXeMsGbbwREqlI0iLyJw/exec";
 
-    function setQuickRange() {
-      const val = document.getElementById('quickRange').value;
-      if (!val) return;
-      const today = new Date();
-      const endStr = today.toISOString().slice(0, 10);
-      const start = new Date(today);
-      start.setDate(today.getDate() - parseInt(val));
-      const startStr = start.toISOString().slice(0, 10);
-      document.getElementById('startDate').value = startStr;
-      document.getElementById('endDate').value = endStr;
+    function escapeHtml(str) {
+      return String(str || "").replace(/[&<>"']/g, s => (
+        { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[s]
+      ));
     }
 
-    async function queryMember() {
-      const memberId = document.getElementById('memberId').value.trim();
+    function applyQuickRange() {
+      const range = document.getElementById("quickRange").value;
+      if (!range) {
+        document.getElementById("startDate").value = "";
+        document.getElementById("endDate").value = "";
+        return;
+      }
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - Number(range));
+      document.getElementById("startDate").value = start.toISOString().slice(0,10);
+      document.getElementById("endDate").value = end.toISOString().slice(0,10);
+    }
+
+    async function search() {
+      const memberID = document.getElementById('memberID').value.trim();
       const startDate = document.getElementById('startDate').value;
       const endDate = document.getElementById('endDate').value;
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = "查詢中...";
 
-      const outSummary = document.getElementById('outputSummary');
-      const outTable = document.getElementById('outputTable');
-
-      outSummary.style.display = 'block';
-      outSummary.innerHTML = `<div class="small">查詢中…</div>`;
-      outTable.innerHTML = '';
-
-      if (!memberId) {
-        outSummary.innerHTML = `<div class="error">請輸入會員帳號</div>`;
+      if (!memberID) {
+        resultDiv.innerHTML = `<p class="error">請輸入會員號。</p>`;
         return;
       }
 
       try {
-        const resp = await fetch(`${API_URL}?memberId=${encodeURIComponent(memberId)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`);
-        const text = await resp.text();
-        let data = null;
-        try {
-          data = JSON.parse(text);
-        } catch {
-          outSummary.innerHTML = `<div class="error">伺服器回傳非 JSON 格式</div>`;
+        const url = `${API_URL}?memberID=${encodeURIComponent(memberID)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+
+        if (data.error) {
+          resultDiv.innerHTML = `<p class="error">${escapeHtml(data.error)}</p>`;
           return;
         }
 
-        if (!data.success) {
-          outSummary.innerHTML = `<div class="error">${data.message || '查詢失敗'}</div>`;
+        // 🟡 從 API 取得會員資訊
+        const rows = data.transactions || [];
+        const currentBalance = data.currentBalance || "0";
+        const totalDeposit = data.totalDeposit || "0";
+        const totalBonus = data.totalBonus || "0";
+        const totalDiscountAmount = data.totalDiscountAmount || "0";
+        const memberLevel = data.memberLevel || "-";
+        const memberDiscount = data.memberDiscount || "-";
+        const memberExpire = data.memberExpire || "-";
+        const note = data.note || "";
+
+        // 🟡 顯示會員資訊
+        let html = `<div class="balance">目前餘額：$${escapeHtml(String(currentBalance))}</div>`;
+        html += `<div class="summary">會員等級：${escapeHtml(memberLevel)}　｜　折扣：${escapeHtml(memberDiscount)}%　｜　到期日：${escapeHtml(memberExpire)}</div>`;
+        html += `<div class="summary">歷史儲值總額：$${escapeHtml(String(totalDeposit))}　｜　歷史紅利總額：$${escapeHtml(String(totalBonus))}　｜　歷史折扣總額：$${escapeHtml(String(totalDiscountAmount))}</div>`;
+
+        if (note) html += `<div class="muted">${escapeHtml(note)}</div>`;
+
+        html += `<p style="text-align:center; margin-top:6px;">共 ${rows.length} 筆交易紀錄</p>`;
+
+        if (rows.length === 0) {
+          html += `<div style="text-align:center; margin-top:10px; color:#666;">無符合篩選的交易紀錄。</div>`;
+          resultDiv.innerHTML = html;
           return;
         }
 
-        // ===== 顯示上方會員資訊 =====
-        outSummary.innerHTML = `
-          <div class="item"><span class="label">會員帳號</span><div class="value">${escapeHtml(data.memberId)}</div></div>
-          <div class="item"><span class="label">最後總餘額</span><div class="value">${escapeHtml(data.lastBalance ?? '無資料')}</div></div>
-          <div class="item"><span class="label">會員等級</span><div class="value">${escapeHtml(data.membership ?? '無資料')}</div></div>
-          <div class="item"><span class="label">會員折扣 %</span><div class="value">${escapeHtml(data.discountPercent ?? '無資料')}</div></div>
-          <div class="item"><span class="label">會員到期日</span><div class="value">${escapeHtml(data.expirationDate ?? '無資料')}</div></div>
-          <div class="small">共找到 ${data.details.length} 筆交易資料（符合篩選區間）</div>
-        `;
+        // 🟡 顯示交易明細
+        html += `<table><tr>
+          <th>日期</th>
+          <th>訂單號</th>
+          <th>儲值金</th>
+          <th>紅利</th>
+          <th>扣款金額</th>
+          <th>折扣金額</th>
+          <th>特殊調整</th>
+          <th>餘額</th>
+        </tr>`;
 
-        // ===== 顯示交易明細表格 =====
-        if (data.details.length > 0) {
-          let tableHtml = `
-            <table>
-              <thead>
-                <tr>
-                  <th>日期</th>
-                  <th>訂單號碼</th>
-                  <th>儲值金</th>
-                  <th>會員紅利</th>
-                  <th>扣款金額</th>
-                  <th>折扣金額</th>
-                  <th>特殊調整</th>
-                  <th>餘額</th>
-                </tr>
-              </thead>
-              <tbody>
-          `;
-          data.details.forEach(item => {
-            tableHtml += `
-              <tr>
-                <td>${escapeHtml(item.date)}</td>
-                <td>${escapeHtml(item.orderId)}</td>
-                <td>${escapeHtml(item.deposit)}</td>
-                <td>${escapeHtml(item.bonus)}</td>
-                <td>${escapeHtml(item.amount)}</td>
-                <td>${escapeHtml(item.discountAmount)}</td>
-                <td>${escapeHtml(item.adjustment)}</td>
-                <td>${escapeHtml(item.balance)}</td>
-              </tr>
-            `;
-          });
-          tableHtml += '</tbody></table>';
-          outTable.innerHTML = tableHtml;
-        } else {
-          outTable.innerHTML = `<div class="small">此區間內無交易資料</div>`;
-        }
+        html += rows.map(r => `
+          <tr>
+            <td>${escapeHtml(r.date)}</td>
+            <td>${escapeHtml(r.orderID)}</td>
+            <td>${escapeHtml(String(r.deposit))}</td>
+            <td>${escapeHtml(String(r.bonus))}</td>
+            <td>${escapeHtml(String(r.deduction))}</td>
+            <td>${escapeHtml(String(r.discountAmount))}</td>
+            <td>${escapeHtml(String(r.adjustment))}</td>
+            <td>${escapeHtml(String(r.balance))}</td>
+          </tr>
+        `).join('');
+
+        html += `</table>`;
+        resultDiv.innerHTML = html;
 
       } catch (err) {
         console.error(err);
-        outSummary.innerHTML = `<div class="error">發生錯誤，請稍後再試</div>`;
+        resultDiv.innerHTML = `<p class="error">查詢失敗：${escapeHtml(err.message)}</p>`;
       }
-    }
-
-    function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, function (m) {
-        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];
-      });
     }
   </script>
 </body>
