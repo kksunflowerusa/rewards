@@ -44,8 +44,8 @@
   <div id="result" class="result"></div>
 
   <script>
-    // ✅ 改成實際部署後的 Apps Script 網址
-    const API_URL = "https://script.google.com/macros/s/AKfycbwIFEqX5Igu-jwaWwJi1t1DuM4WYf6_E6vt0b19Ibb80e51cXeMsGbbwREqlI0iLyJw/exec";
+    // 請改成你實際部署後的 Apps Script 網址
+    const API_URL = "https://script.google.com/macros/s/AKfycbx63M2C-5VqkZXvsjjH1IqltEFFA5jf9xM6_qNC8w3Yy6chr8j9uqBgYOwZ2eY0JcI/exec";
 
     function escapeHtml(str) {
       return String(str || "").replace(/[&<>"']/g, s => (
@@ -84,12 +84,13 @@
         const resp = await fetch(url);
         const data = await resp.json();
 
+        console.log("API 回傳：", data);  // 🔍 用於調試，查看完整回傳資料
+
         if (data.error) {
           resultDiv.innerHTML = `<p class="error">${escapeHtml(data.error)}</p>`;
           return;
         }
 
-        // 🟡 從 API 取得會員資訊
         const rows = data.transactions || [];
         const currentBalance = data.currentBalance || "0";
         const totalDeposit = data.totalDeposit || "0";
@@ -100,12 +101,13 @@
         const memberExpire = data.memberExpire || "-";
         const note = data.note || "";
 
-        // 🟡 顯示會員資訊
         let html = `<div class="balance">目前餘額：$${escapeHtml(String(currentBalance))}</div>`;
         html += `<div class="summary">會員等級：${escapeHtml(memberLevel)}　｜　折扣：${escapeHtml(memberDiscount)}%　｜　到期日：${escapeHtml(memberExpire)}</div>`;
         html += `<div class="summary">歷史儲值總額：$${escapeHtml(String(totalDeposit))}　｜　歷史紅利總額：$${escapeHtml(String(totalBonus))}　｜　歷史折扣總額：$${escapeHtml(String(totalDiscountAmount))}</div>`;
 
-        if (note) html += `<div class="muted">${escapeHtml(note)}</div>`;
+        if (note) {
+          html += `<div class="muted">${escapeHtml(note)}</div>`;
+        }
 
         html += `<p style="text-align:center; margin-top:6px;">共 ${rows.length} 筆交易紀錄</p>`;
 
@@ -115,7 +117,6 @@
           return;
         }
 
-        // 🟡 顯示交易明細
         html += `<table><tr>
           <th>日期</th>
           <th>訂單號</th>
