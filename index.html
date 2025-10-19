@@ -22,7 +22,7 @@
   </style>
 </head>
 <body>
-  <h2>A會員儲值與交易查詢</h2>
+  <h2>KK會員儲值與交易查詢</h2>
 
   <label>會員號 (例如：A12345)</label>
   <input id="memberID" placeholder="請輸入會員號">
@@ -110,7 +110,7 @@
         const note = data.note || "";
 
         let html = `<div class="balance">目前餘額：$${escapeHtml(String(currentBalance))}</div>`;
-        html += `<div class="summary">會員等級：${escapeHtml(memberLevel)}　｜　折扣：${escapeHtml(memberDiscount)}%　｜　到期日：${escapeHtml(memberExpire)}</div>`;
+        html += `<div class="summary">會員等級：${escapeHtml(memberLevel)}　｜　折扣：${escapeHtml(memberDiscount)}%　｜　會員到期日：${escapeHtml(memberExpire)}</div>`;
         html += `<div class="summary">歷史儲值總額：$${escapeHtml(String(totalDeposit))}　｜　歷史紅利總額：$${escapeHtml(String(totalBonus))}　｜　歷史折扣總額：$${escapeHtml(String(totalDiscountAmount))}</div>`;
 
         if (note) html += `<div class="muted">${escapeHtml(note)}</div>`;
