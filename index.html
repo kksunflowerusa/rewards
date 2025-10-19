@@ -1,138 +1,93 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8" />
-  <title>會員查詢系統</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8" />
+  <title>會員查詢系統 (外部)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    body {
-      font-family: "Microsoft JhengHei", Arial;
-      background: #f5f6fa;
-      padding: 20px;
-      max-width: 600px;
-      margin: auto;
-    }
-    h1 {
-      text-align: center;
-      color: #2d3436;
-      font-size: 22px;
-      margin-bottom: 20px;
-    }
-    label {
-      display: block;
-      font-weight: bold;
-      margin-top: 12px;
-      margin-bottom: 4px;
-    }
-    input[type="text"] {
-      width: 100%;
-      padding: 10px;
-      font-size: 14px;
-      box-sizing: border-box;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    button {
-      margin-top: 12px;
-      padding: 10px 16px;
-      font-size: 14px;
-      background-color: #1976d2;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      width: 100%;
-    }
-    button:hover {
-      background-color: #125a9c;
-    }
-    .result {
-      margin-top: 20px;
-      background: #fff;
-      padding: 15px;
-      border-radius: 8px;
-      border: 1px solid #ddd;
-    }
-    .row {
-      margin-bottom: 10px;
-    }
-    .label {
-      color: #555;
-      font-size: 13px;
-    }
-    .value {
-      font-size: 16px;
-      font-weight: 600;
-      margin-top: 2px;
-      word-break: break-all;
-    }
-    .error {
-      color: #b00020;
-      font-weight: bold;
-      text-align: center;
-    }
-    .loading {
-      text-align: center;
-      color: #666;
-    }
-    .small {
-      font-size: 12px;
-      color: #777;
-      text-align: center;
-      margin-top: 10px;
-    }
+    body { font-family: "Microsoft JhengHei", Arial; background:#f5f7fb; padding:20px; max-width:720px; margin:auto; }
+    h1 { text-align:center; margin-bottom:18px; }
+    label { display:block; margin-top:10px; font-weight:700; }
+    input[type="text"] { width:100%; padding:10px; box-sizing:border-box; font-size:14px; border-radius:6px; border:1px solid #ccc; }
+    button { margin-top:12px; width:100%; padding:12px; border-radius:8px; border:none; background:#1976d2; color:#fff; font-size:16px; cursor:pointer; }
+    button:hover { background:#125a9c; }
+    .result { margin-top:18px; background:#fff; border:1px solid #e1e4ea; border-radius:8px; padding:14px; }
+    .row { margin-bottom:10px; }
+    .label { color:#666; font-size:13px; }
+    .value { font-weight:700; font-size:15px; margin-top:4px; word-break:break-all; }
+    .error { color:#b00020; font-weight:700; text-align:center; }
+    .debug { margin-top:10px; font-size:12px; color:#444; background:#f0f0f0; padding:8px; border-radius:6px; white-space:pre-wrap; }
+    .small { font-size:12px; color:#666; text-align:center; margin-top:8px; }
   </style>
 </head>
 <body>
   <h1>會員查詢系統</h1>
 
   <label for="memberId">會員帳號</label>
-  <input type="text" id="memberId" placeholder="例如：user123">
+  <input id="memberId" type="text" placeholder="例如：user123">
 
-  <button onclick="queryMember()">查詢</button>
+  <button id="btnQuery" onclick="queryMember()">查詢會員資訊</button>
 
   <div id="output" class="result" style="display:none;"></div>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbwmGOn9pXB267TqBlbEuT1Q803W0bSr6lCmq3QqTVSLOJBYba1q-3MawxtIb8P4SvMB/exec";
+    // <-- 把下面改成你自己的 Apps Script exec URL（你提供的 URL）
+    const API_URL = "https://script.google.com/macros/s/AKfycbw-2iyQqU7PXL-FGgIPJ7cGViQxvVHwv8A8WLmx77OuCvmLgLtc0G6E6SQo3Jm5EOTQ/exec";
 
     async function queryMember() {
       const memberId = document.getElementById('memberId').value.trim();
       const out = document.getElementById('output');
       out.style.display = 'block';
+      out.innerHTML = '<div class="small">查詢中…</div>';
 
       if (!memberId) {
-        out.innerHTML = `<div class="error">請輸入會員帳號</div>`;
+        out.innerHTML = '<div class="error">請輸入會員帳號</div>';
         return;
       }
 
-      out.innerHTML = `<div class="loading">查詢中，請稍候...</div>`;
-
       try {
-        // 呼叫你的 Apps Script API
-        const response = await fetch(`${API_URL}?memberId=${encodeURIComponent(memberId)}`);
-        const res = await response.json();
+        const resp = await fetch(`${API_URL}?memberId=${encodeURIComponent(memberId)}`, {
+          method: 'GET',
+          // mode: 'cors' // 預設為 cors，Apps Script Web App 通常允許 GET
+        });
 
-        if (!res.success) {
-          out.innerHTML = `<div class="error">${res.message || '查詢失敗'}</div>`;
+        // 先取得 raw text（因為有時 server 可能回 HTML 而不是 JSON）
+        const text = await resp.text();
+
+        // 嘗試 parse 成 JSON
+        let data = null;
+        try {
+          data = JSON.parse(text);
+        } catch (err) {
+          // 若 parse 失敗，顯示伺服器回傳內容供偵錯
+          out.innerHTML = `<div class="error">伺服器回傳非 JSON（解析失敗）</div>
+                           <div class="debug">伺服器原始回應:\n${escapeHtml(text)}</div>`;
           return;
         }
 
-        // 顯示查詢結果
+        // 如果 data.success 為 false，顯示後端錯誤訊息
+        if (!data || data.success === false) {
+          const msg = (data && data.message) ? data.message : '查詢失敗（server 回傳）';
+          out.innerHTML = `<div class="error">${escapeHtml(msg)}</div>
+                           <div class="debug">伺服器回應 JSON:\n${escapeHtml(JSON.stringify(data, null, 2))}</div>`;
+          return;
+        }
+
+        // 成功時顯示內容
         let html = '';
-        html += buildRow('會員帳號', res.memberId);
-        html += buildRow('最後總餘額', res.lastBalance ?? '無資料');
-        html += buildRow('最後餘額日期', res.lastBalanceDate ?? '無資料');
-        html += buildRow('會員等級', res.membership ?? '無資料');
-        html += buildRow('會員折扣 %', res.discountPercent ?? '無資料');
-        html += buildRow('會員到期日', res.expirationDate ?? '無資料');
-        html += `<div class="small">共找到 ${res.foundRows || 0} 筆符合資料</div>`;
+        html += buildRow('會員帳號', data.memberId || memberId);
+        html += buildRow('最後總餘額', data.lastBalance !== null ? data.lastBalance : '無資料');
+        html += buildRow('最後餘額日期', data.lastBalanceDate || '無資料');
+        html += buildRow('會員等級', data.membership || '無資料');
+        html += buildRow('會員折扣 %', data.discountPercent || '無資料');
+        html += buildRow('會員到期日', data.expirationDate || '無資料');
+        html += `<div class="small">共找到 ${data.foundRows || 0} 筆符合資料</div>`;
 
         out.innerHTML = html;
-
       } catch (err) {
+        out.innerHTML = `<div class="error">發生網路錯誤或 CORS 被拒絕</div>
+                         <div class="debug">${escapeHtml(String(err))}</div>`;
         console.error(err);
-        out.innerHTML = `<div class="error">發生錯誤，請稍後再試</div>`;
       }
     }
 
@@ -141,9 +96,7 @@
     }
 
     function escapeHtml(s) {
-      return s.replace(/[&<>"']/g, function (m) {
-        return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[m];
-      });
+      return String(s).replace(/[&<>"']/g, function (m) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]; });
     }
   </script>
 </body>
