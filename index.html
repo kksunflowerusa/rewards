@@ -3,26 +3,120 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>會員儲值與交易查詢</title>
+  <title>KK 會員儲值與交易查詢</title>
   <style>
-    body { font-family:"Noto Sans TC",Arial,sans-serif; max-width:860px; margin:30px auto; padding:0 12px; background:#f8fafc; }
-    h2 { text-align:center; color:#222; margin-bottom:6px; }
-    label { display:block; margin-top:10px; font-weight:bold; }
-    input, select { width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:15px; box-sizing:border-box; }
-    button { width:100%; margin-top:10px; padding:10px; background:#007bff; color:white; border:none; border-radius:6px; font-size:15px; cursor:pointer; }
-    button:hover { background:#005fcc; }
-    .result { margin-top:20px; }
-    .error { color:#d32f2f; text-align:center; font-weight:bold; }
-    .balance, .summary { text-align:center; font-size:16px; font-weight:bold; color:#007bff; margin-top:10px; }
-    .muted { text-align:center; color:#666; font-size:13px; margin-top:6px; }
-    table { width:100%; border-collapse:collapse; margin-top:15px; background:white; }
-    th, td { border:1px solid #ddd; padding:8px; text-align:center; font-size:13px; }
-    th { background:#f1f3f5; }
-    @media (max-width:720px) { th, td { font-size:12px; padding:6px; } }
+    :root {
+      --primary: #007bff;
+      --primary-dark: #005fcc;
+      --bg: #f8fafc;
+    }
+    body {
+      font-family: "Noto Sans TC", Arial, sans-serif;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 12px 80px;
+      background: var(--bg);
+    }
+    h2 {
+      text-align: center;
+      color: #222;
+      margin: 20px 0 10px;
+      font-size: 1.5rem;
+    }
+    label {
+      display: block;
+      margin-top: 12px;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 15px;
+      box-sizing: border-box;
+      margin-top: 4px;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      max-width: 860px;
+      margin: 0 auto;
+      z-index: 999;
+    }
+    button:hover {
+      background: var(--primary-dark);
+    }
+    .result {
+      margin-top: 20px;
+    }
+    .error {
+      color: #d32f2f;
+      text-align: center;
+      font-weight: bold;
+    }
+    .balance {
+      text-align: center;
+      font-size: 20px;
+      font-weight: bold;
+      color: var(--primary);
+      margin-top: 10px;
+    }
+    .summary {
+      text-align: center;
+      font-size: 14px;
+      color: #333;
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+    .muted {
+      text-align: center;
+      color: #666;
+      font-size: 13px;
+      margin-top: 6px;
+    }
+    .table-container {
+      overflow-x: auto;
+      margin-top: 15px;
+      background: white;
+      border-radius: 6px;
+    }
+    table {
+      width: 100%;
+      min-width: 680px;
+      border-collapse: collapse;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    th {
+      background: #f1f3f5;
+    }
+    @media (max-width: 720px) {
+      th, td { font-size: 12px; padding: 6px; }
+      h2 { font-size: 1.3rem; }
+      .balance { font-size: 18px; }
+      .summary { font-size: 13px; }
+    }
   </style>
 </head>
 <body>
-  <h2>KK會員儲值與交易查詢</h2>
+  <h2>KK 會員儲值與交易查詢</h2>
 
   <label>會員號 (例如：A12345)</label>
   <input id="memberID" placeholder="請輸入會員號">
@@ -41,10 +135,10 @@
   </select>
 
   <button onclick="search()">查詢</button>
+
   <div id="result" class="result"></div>
 
   <script>
-    // 請改成你實際部署後的 Apps Script 網址
     const API_URL = "https://script.google.com/macros/s/AKfycbxqUaEb1YTNpun-pcjiaaWfH_QXVXX4G9R7HxwOuXnKm9sq_M2HCCQtTHQJ5pBaRxY/exec";
 
     function escapeHtml(str) {
@@ -72,7 +166,7 @@
       const startDate = document.getElementById('startDate').value;
       const endDate = document.getElementById('endDate').value;
       const resultDiv = document.getElementById('result');
-      resultDiv.innerHTML = "查詢中...";
+      resultDiv.innerHTML = `<p class="muted">查詢中...</p>`;
 
       if (!memberID) {
         resultDiv.innerHTML = `<p class="error">請輸入會員號。</p>`;
@@ -83,8 +177,6 @@
         const url = `${API_URL}?memberID=${encodeURIComponent(memberID)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
         const resp = await fetch(url);
         const data = await resp.json();
-
-        console.log("API 回傳：", data);  // 🔍 用於調試，查看完整回傳資料
 
         if (data.error) {
           resultDiv.innerHTML = `<p class="error">${escapeHtml(data.error)}</p>`;
@@ -101,15 +193,13 @@
         const memberExpire = data.memberExpire || "-";
         const note = data.note || "";
 
-        let html = `<div class="balance">目前餘額：$${escapeHtml(String(currentBalance))}</div>`;
-        html += `<div class="summary">會員等級：${escapeHtml(memberLevel)}　｜　會員折扣：${escapeHtml(memberDiscount)}%　｜　會員到期日：${escapeHtml(memberExpire)}</div>`;
-        html += `<div class="summary">歷史儲值總額：$${escapeHtml(String(totalDeposit))}　｜　歷史紅利總額：$${escapeHtml(String(totalBonus))}　｜　歷史折扣總額：$${escapeHtml(String(totalDiscountAmount))}</div>`;
+        let html = `<div class="balance">目前餘額：$${escapeHtml(currentBalance)}</div>`;
+        html += `<div class="summary">等級：${escapeHtml(memberLevel)}　｜　折扣：${escapeHtml(memberDiscount)}%　｜　到期：${escapeHtml(memberExpire)}</div>`;
+        html += `<div class="summary">儲值總額：$${escapeHtml(totalDeposit)}　｜　紅利總額：$${escapeHtml(totalBonus)}　｜　折扣總額：$${escapeHtml(totalDiscountAmount)}</div>`;
 
-        if (note) {
-          html += `<div class="muted">${escapeHtml(note)}</div>`;
-        }
+        if (note) html += `<div class="muted">${escapeHtml(note)}</div>`;
 
-        html += `<p style="text-align:center; margin-top:6px;">共 ${rows.length} 筆交易紀錄</p>`;
+        html += `<p style="text-align:center; margin-top:8px;">共 ${rows.length} 筆交易紀錄</p>`;
 
         if (rows.length === 0) {
           html += `<div style="text-align:center; margin-top:10px; color:#666;">無符合篩選的交易紀錄。</div>`;
@@ -117,7 +207,7 @@
           return;
         }
 
-        html += `<table><tr>
+        html += `<div class="table-container"><table><tr>
           <th>日期</th>
           <th>訂單號</th>
           <th>儲值金</th>
@@ -132,16 +222,16 @@
           <tr>
             <td>${escapeHtml(r.date)}</td>
             <td>${escapeHtml(r.orderID)}</td>
-            <td>${escapeHtml(String(r.deposit))}</td>
-            <td>${escapeHtml(String(r.bonus))}</td>
-            <td>${escapeHtml(String(r.deduction))}</td>
-            <td>${escapeHtml(String(r.discountAmount))}</td>
-            <td>${escapeHtml(String(r.adjustment))}</td>
-            <td>${escapeHtml(String(r.balance))}</td>
+            <td>${escapeHtml(r.deposit)}</td>
+            <td>${escapeHtml(r.bonus)}</td>
+            <td>${escapeHtml(r.deduction)}</td>
+            <td>${escapeHtml(r.discountAmount)}</td>
+            <td>${escapeHtml(r.adjustment)}</td>
+            <td>${escapeHtml(r.balance)}</td>
           </tr>
         `).join('');
 
-        html += `</table>`;
+        html += `</table></div>`;
         resultDiv.innerHTML = html;
 
       } catch (err) {
