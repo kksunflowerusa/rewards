@@ -149,17 +149,17 @@
       <div class="stat"><strong>會員等級：</strong><div id="level">-</div></div>
       <div class="stat"><strong>會員折扣：</strong><div id="discount">-</div></div>
       <div class="stat"><strong>會員到期日：</strong><div id="expire">-</div></div>
-      <div class="stat"><strong>目前餘額：</strong><div id="balance">-</div></div>
-      <div class="stat"><strong>積點餘額：</strong><div id="pointsBalance">-</div></div>
+      <div class="stat"><strong>KK儲值金餘額：</strong><div id="balance">-</div></div>
+      <div class="stat"><strong>會員積點餘額：</strong><div id="pointsBalance">-</div></div>
     </div>
   </div>
 
   <div class="card" id="summary" style="display:none;">
     <h3>統計資訊</h3>
     <div class="stats">
-      <div class="stat"><strong>總儲值金：</strong><div id="totalDeposit">-</div></div>
-      <div class="stat"><strong>總紅利：</strong><div id="totalBonus">-</div></div>
-      <div class="stat"><strong>總折扣金額：</strong><div id="totalDiscountAmount">-</div></div>
+      <div class="stat"><strong>累計儲值金：</strong><div id="totalDeposit">-</div></div>
+      <div class="stat"><strong>累計紅利：</strong><div id="totalBonus">-</div></div>
+      <div class="stat"><strong>累計折扣金額：</strong><div id="totalDiscountAmount">-</div></div>
     </div>
   </div>
 
@@ -237,7 +237,8 @@
           document.getElementById("transactions").style.display = "block";
 
           document.getElementById("level").textContent = data.memberLevel || "-";
-          document.getElementById("discount").textContent = data.memberDiscount || "-";
+          document.getElementById("membershipDiscount").textContent = 
+          memberData.membershipDiscount ? memberData.membershipDiscount + "%" : "—";
           document.getElementById("expire").textContent = data.memberExpire || "-";
           document.getElementById("balance").textContent = data.currentBalance || "-";
           document.getElementById("pointsBalance").textContent = data.currentPointsBalance || "-";
