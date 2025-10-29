@@ -2,229 +2,228 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>KK會員儲值與交易查詢</title>
   <style>
-    :root {
-      --primary: #007bff;
-      --primary-dark: #005fcc;
-      --bg: #f8fafc;
-    }
     body {
       font-family: "Noto Sans TC", Arial, sans-serif;
-      max-width: 860px;
-      margin: 0 auto;
-      padding: 0 12px 80px;
-      background: var(--bg);
+      background: #f8fafc;
+      max-width: 900px;
+      margin: 30px auto;
+      padding: 20px;
     }
-    h2 {
+    h1 {
       text-align: center;
-      color: #222;
-      margin: 20px 0 10px;
-      font-size: 1.5rem;
+      color: #1e3a8a;
+      font-size: 1.8em;
+      margin-bottom: 20px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+      padding: 20px;
+      margin-bottom: 20px;
     }
     label {
       display: block;
-      margin-top: 12px;
+      margin-top: 10px;
       font-weight: 600;
-      font-size: 0.95rem;
     }
-    input, select {
+    input {
       width: 100%;
-      padding: 10px;
-      border: 1px solid #ccc;
+      padding: 8px;
       border-radius: 6px;
-      font-size: 15px;
-      box-sizing: border-box;
-      margin-top: 4px;
+      border: 1px solid #cbd5e1;
+      margin-top: 5px;
+      font-size: 14px;
     }
     button {
-      width: 100%;
-      padding: 14px;
-      background: var(--primary);
+      background: #2563eb;
       color: white;
       border: none;
+      padding: 10px 20px;
       border-radius: 6px;
-      font-size: 16px;
+      margin-top: 12px;
       cursor: pointer;
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      max-width: 860px;
-      margin: 0 auto;
-      z-index: 999;
+      font-weight: 600;
     }
-    button:hover { background: var(--primary-dark); }
-    .result { margin-top: 20px; }
-    .error { color: #d32f2f; text-align: center; font-weight: bold; }
-    .balance {
-      text-align: center;
-      font-size: 20px;
-      font-weight: bold;
-      color: var(--primary);
-      margin-top: 10px;
+    button:hover {
+      background: #1e40af;
     }
-    .summary {
-      text-align: center;
-      font-size: 14px;
-      color: #333;
-      margin-top: 6px;
-      line-height: 1.5;
-    }
-    .muted { text-align: center; color: #666; font-size: 13px; margin-top: 6px; }
-    .table-container {
-      overflow-x: auto;
+    table {
+      width: 100%;
+      border-collapse: collapse;
       margin-top: 15px;
-      background: white;
-      border-radius: 6px;
     }
-    table { width: 100%; min-width: 960px; border-collapse: collapse; }
     th, td {
-      border: 1px solid #ddd;
+      border: 1px solid #e2e8f0;
       padding: 8px;
       text-align: center;
       font-size: 13px;
-      white-space: nowrap;
     }
-    th { background: #f1f3f5; }
-    @media (max-width: 720px) {
-      th, td { font-size: 12px; padding: 6px; }
-      h2 { font-size: 1.3rem; }
-      .balance { font-size: 18px; }
-      .summary { font-size: 13px; }
+    th {
+      background: #f1f5f9;
+      font-weight: 600;
+    }
+    tr:nth-child(even) {
+      background: #f9fafb;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .stat {
+      background: #f1f5f9;
+      padding: 10px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .error {
+      color: #dc2626;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+    .note {
+      color: #6b7280;
+      font-size: 13px;
+      margin-top: 6px;
     }
   </style>
 </head>
 <body>
-  <h2>K會員儲值與交易查詢</h2>
+  <h1>KK會員儲值與交易查詢</h1>
 
-  <label>會員號 (例如：A12345)</label>
-  <input id="memberID" placeholder="請輸入會員號">
+  <div class="card">
+    <label>會員帳號：</label>
+    <input type="text" id="memberID" placeholder="請輸入會員帳號 (例：A123456)" />
 
-  <label>開始日期</label>
-  <input id="startDate" type="date">
+    <label>開始日期：</label>
+    <input type="date" id="startDate" />
 
-  <label>結束日期</label>
-  <input id="endDate" type="date">
+    <label>結束日期：</label>
+    <input type="date" id="endDate" />
 
-  <label>快捷查詢</label>
-  <select id="quickRange" onchange="applyQuickRange()">
-    <option value="">--請選擇--</option>
-    <option value="30">近30天</option>
-    <option value="60">近60天</option>
-  </select>
+    <button onclick="queryData()">查詢</button>
 
-  <button onclick="search()">查詢</button>
+    <div id="errorMsg" class="error"></div>
+    <div id="noteMsg" class="note"></div>
+  </div>
 
-  <div id="result" class="result"></div>
+  <div class="card" id="memberInfo" style="display:none;">
+    <h3>會員資訊</h3>
+    <div class="stats">
+      <div class="stat"><strong>會員等級：</strong><div id="level">-</div></div>
+      <div class="stat"><strong>會員折扣%：</strong><div id="discount">-</div></div>
+      <div class="stat"><strong>會員到期日：</strong><div id="expire">-</div></div>
+      <div class="stat"><strong>KK儲值金餘額：</strong><div id="balance">-</div></div>
+      <div class="stat"><strong>積點餘額：</strong><div id="pointsBalance">-</div></div>
+    </div>
+  </div>
 
-  <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbyFk7I2iKHiFvL5vlayNpyEoTRNP32nnzd6ZCPaFYNY1wfbLHJTc2KiMjO6klDXubC0/exec";
+  <div class="card" id="summary" style="display:none;">
+    <h3>統計資訊</h3>
+    <div class="stats">
+      <div class="stat"><strong>總儲值金：</strong><div id="totalDeposit">-</div></div>
+      <div class="stat"><strong>總紅利：</strong><div id="totalBonus">-</div></div>
+      <div class="stat"><strong>總折扣金額：</strong><div id="totalDiscountAmount">-</div></div>
+    </div>
+  </div>
 
-    function escapeHtml(str) {
-      return String(str || "").replace(/[&<>"']/g, s => (
-        { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[s]
-      ));
-    }
-
-    function applyQuickRange() {
-      const range = document.getElementById("quickRange").value;
-      if (!range) {
-        document.getElementById("startDate").value = "";
-        document.getElementById("endDate").value = "";
-        return;
-      }
-      const end = new Date();
-      const start = new Date();
-      start.setDate(end.getDate() - Number(range));
-      document.getElementById("startDate").value = start.toISOString().slice(0,10);
-      document.getElementById("endDate").value = end.toISOString().slice(0,10);
-    }
-
-    async function search() {
-      const memberID = document.getElementById('memberID').value.trim();
-      const startDate = document.getElementById('startDate').value;
-      const endDate = document.getElementById('endDate').value;
-      const resultDiv = document.getElementById('result');
-      resultDiv.innerHTML = `<p class="muted">查詢中...</p>`;
-
-      if (!memberID) {
-        resultDiv.innerHTML = `<p class="error">請輸入會員號。</p>`;
-        return;
-      }
-
-      try {
-        const url = `${API_URL}?memberID=${encodeURIComponent(memberID)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
-        const resp = await fetch(url);
-        const data = await resp.json();
-
-        if (data.error) {
-          resultDiv.innerHTML = `<p class="error">${escapeHtml(data.error)}</p>`;
-          return;
-        }
-
-        const rows = data.transactions || [];
-        const currentBalance = data.currentBalance || "0";
-        const currentPointsBalance = data.currentPointsBalance || "0";
-        const totalDeposit = data.totalDeposit || "0";
-        const totalBonus = data.totalBonus || "0";
-        const totalDiscountAmount = data.totalDiscountAmount || "0";
-        const memberLevel = data.memberLevel && data.memberLevel !== "-" ? data.memberLevel : "未設定";
-        const memberDiscount = data.memberDiscount && data.memberDiscount !== "-" ? `${data.memberDiscount}%` : "未設定";
-        const memberExpire = data.memberExpire && data.memberExpire !== "-" ? data.memberExpire : "未設定";
-        const note = data.note || "";
-
-        let html = `<div class="balance">KK儲值金餘額：$${escapeHtml(currentBalance)}　｜　會員積點餘額：${escapeHtml(currentPointsBalance)} 點</div>`;
-        html += `<div class="summary">會員等級：${escapeHtml(memberLevel)}　｜　會員折扣：${escapeHtml(memberDiscount)}　｜　會員到期日：${escapeHtml(memberExpire)}</div>`;
-        html += `<div class="summary">儲值總額：$${escapeHtml(totalDeposit)}　｜　紅利總額：$${escapeHtml(totalBonus)}　｜　折扣總額：$${escapeHtml(totalDiscountAmount)}</div>`;
-
-        if (note) html += `<div class="muted">${escapeHtml(note)}</div>`;
-
-        html += `<p style="text-align:center; margin-top:8px;">共 ${rows.length} 筆交易紀錄</p>`;
-
-        if (rows.length === 0) {
-          html += `<div style="text-align:center; margin-top:10px; color:#666;">無符合篩選的交易紀錄。</div>`;
-          resultDiv.innerHTML = html;
-          return;
-        }
-
-        html += `<div class="table-container"><table><tr>
+  <div class="card" id="transactions" style="display:none;">
+    <h3>交易紀錄</h3>
+    <table>
+      <thead>
+        <tr>
           <th>日期</th>
           <th>訂單號</th>
           <th>KK儲值金</th>
           <th>紅利</th>
-          <th>扣款金額</th>
+          <th>扣款</th>
           <th>折扣金額</th>
-          <th>特殊調整</th>
+          <th>調整</th>
           <th>餘額</th>
-          <th>積點(+)</th>
-          <th>積點(-)</th>
+          <th>積點 +</th>
+          <th>積點 -</th>
           <th>積點餘額</th>
-        </tr>`;
+        </tr>
+      </thead>
+      <tbody id="txBody"></tbody>
+    </table>
+  </div>
 
-        html += rows.map(r => `
-          <tr>
-            <td>${escapeHtml(r.date)}</td>
-            <td>${escapeHtml(r.orderID)}</td>
-            <td>${escapeHtml(r.deposit)}</td>
-            <td>${escapeHtml(r.bonus)}</td>
-            <td>${escapeHtml(r.deduction)}</td>
-            <td>${escapeHtml(r.discountAmount)}</td>
-            <td>${escapeHtml(r.adjustment)}</td>
-            <td>${escapeHtml(r.balance)}</td>
-            <td>${escapeHtml(r.pointsAdd)}</td>
-            <td>${escapeHtml(r.pointsDeduct)}</td>
-            <td>${escapeHtml(r.pointsBalance)}</td>
-          </tr>
-        `).join('');
+  <script>
+    const scriptURL = "https://script.google.com/macros/s/AKfycbzcWtGQpsEmL2rUSWcHWwv8Exs805BOhXBFKylcteveqalXkOUmNbf1DpWquH2jSCEb/exec"; 
+    // ⚠️ 部署 Web App 後，請將上方替換成 Apps Script 網址 (e.g. https://script.google.com/macros/s/XXXX/exec)
 
-        html += `</table></div>`;
-        resultDiv.innerHTML = html;
+    async function queryData() {
+      const memberID = document.getElementById("memberID").value.trim();
+      const startDate = document.getElementById("startDate").value;
+      const endDate = document.getElementById("endDate").value;
+      const errorMsg = document.getElementById("errorMsg");
+      const noteMsg = document.getElementById("noteMsg");
+      errorMsg.textContent = "";
+      noteMsg.textContent = "";
 
+      if (!memberID) {
+        errorMsg.textContent = "請輸入會員帳號。";
+        return;
+      }
+
+      try {
+        const url = `${scriptURL}?memberID=${encodeURIComponent(memberID)}&startDate=${startDate}&endDate=${endDate}`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.error) {
+          errorMsg.textContent = data.error;
+          document.getElementById("memberInfo").style.display = "none";
+          document.getElementById("summary").style.display = "none";
+          document.getElementById("transactions").style.display = "none";
+          return;
+        }
+
+        // 顯示會員資訊
+        document.getElementById("memberInfo").style.display = "block";
+        document.getElementById("summary").style.display = "block";
+        document.getElementById("transactions").style.display = "block";
+
+        document.getElementById("level").textContent = data.memberLevel || "-";
+        document.getElementById("discount").textContent = data.memberDiscount || "-";
+        document.getElementById("expire").textContent = data.memberExpire || "-";
+        document.getElementById("balance").textContent = data.currentBalance || "-";
+        document.getElementById("pointsBalance").textContent = data.currentPointsBalance || "-";
+
+        document.getElementById("totalDeposit").textContent = data.totalDeposit || "-";
+        document.getElementById("totalBonus").textContent = data.totalBonus || "-";
+        document.getElementById("totalDiscountAmount").textContent = data.totalDiscountAmount || "-";
+
+        noteMsg.textContent = data.note || "";
+
+        // 填入交易紀錄
+        const tbody = document.getElementById("txBody");
+        tbody.innerHTML = "";
+        (data.transactions || []).forEach(tx => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${tx.date}</td>
+            <td>${tx.orderID}</td>
+            <td>${tx.deposit}</td>
+            <td>${tx.bonus}</td>
+            <td>${tx.deduction}</td>
+            <td>${tx.discountAmount}</td>
+            <td>${tx.adjustment}</td>
+            <td>${tx.balance}</td>
+            <td>${tx.pointsAdd}</td>
+            <td>${tx.pointsDeduct}</td>
+            <td>${tx.pointsBalance}</td>
+          `;
+          tbody.appendChild(row);
+        });
       } catch (err) {
-        console.error(err);
-        resultDiv.innerHTML = `<p class="error">查詢失敗：${escapeHtml(err.message)}</p>`;
+        errorMsg.textContent = "查詢失敗：" + err.message;
       }
     }
   </script>
