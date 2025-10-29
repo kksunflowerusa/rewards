@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
@@ -97,7 +97,7 @@
   </style>
 </head>
 <body>
-  <h2>KK會員儲值與交易查詢</h2>
+  <h2>K會員儲值與交易查詢</h2>
 
   <label>會員號 (例如：A12345)</label>
   <input id="memberID" placeholder="請輸入會員號">
@@ -120,7 +120,7 @@
   <div id="result" class="result"></div>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbzL8yvgziNO3ABHe9hyVl8b1UM5R6OddsU1bE8FU7w8ZCe-LebPxYHh8ygjgQy-0bqF/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbyFk7I2iKHiFvL5vlayNpyEoTRNP32nnzd6ZCPaFYNY1wfbLHJTc2KiMjO6klDXubC0/exec";
 
     function escapeHtml(str) {
       return String(str || "").replace(/[&<>"']/g, s => (
@@ -170,13 +170,13 @@
         const totalDeposit = data.totalDeposit || "0";
         const totalBonus = data.totalBonus || "0";
         const totalDiscountAmount = data.totalDiscountAmount || "0";
-        const memberLevel = data.memberLevel || "-";
-        const memberDiscount = data.memberDiscount || "-";
-        const memberExpire = data.memberExpire || "-";
+        const memberLevel = data.memberLevel && data.memberLevel !== "-" ? data.memberLevel : "未設定";
+        const memberDiscount = data.memberDiscount && data.memberDiscount !== "-" ? `${data.memberDiscount}%` : "未設定";
+        const memberExpire = data.memberExpire && data.memberExpire !== "-" ? data.memberExpire : "未設定";
         const note = data.note || "";
 
-        let html = `<div class="balance">目前餘額：$${escapeHtml(currentBalance)}　｜　積點餘額：${escapeHtml(currentPointsBalance)} 點</div>`;
-        html += `<div class="summary">等級：${escapeHtml(memberLevel)}　｜　折扣：${escapeHtml(memberDiscount)}%　｜　到期：${escapeHtml(memberExpire)}</div>`;
+        let html = `<div class="balance">KK儲值金餘額：$${escapeHtml(currentBalance)}　｜　會員積點餘額：${escapeHtml(currentPointsBalance)} 點</div>`;
+        html += `<div class="summary">會員等級：${escapeHtml(memberLevel)}　｜　會員折扣：${escapeHtml(memberDiscount)}　｜　會員到期日：${escapeHtml(memberExpire)}</div>`;
         html += `<div class="summary">儲值總額：$${escapeHtml(totalDeposit)}　｜　紅利總額：$${escapeHtml(totalBonus)}　｜　折扣總額：$${escapeHtml(totalDiscountAmount)}</div>`;
 
         if (note) html += `<div class="muted">${escapeHtml(note)}</div>`;
@@ -192,7 +192,7 @@
         html += `<div class="table-container"><table><tr>
           <th>日期</th>
           <th>訂單號</th>
-          <th>儲值金</th>
+          <th>KK儲值金</th>
           <th>紅利</th>
           <th>扣款金額</th>
           <th>折扣金額</th>
