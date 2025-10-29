@@ -2,65 +2,107 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>KK會員儲值與交易查詢</title>
   <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1e40af;
+      --bg: #f8fafc;
+    }
     body {
       font-family: "Noto Sans TC", Arial, sans-serif;
-      background: #f8fafc;
+      background: var(--bg);
+      margin: 0 auto;
       max-width: 900px;
-      margin: 30px auto;
-      padding: 20px;
+      padding: 20px 16px 100px;
     }
     h1 {
       text-align: center;
+      font-size: 1.6rem;
+      margin-bottom: 16px;
       color: #1e3a8a;
-      font-size: 1.8em;
-      margin-bottom: 20px;
     }
     .card {
       background: #fff;
       border-radius: 12px;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.08);
-      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      padding: 16px;
       margin-bottom: 20px;
     }
     label {
       display: block;
       margin-top: 10px;
       font-weight: 600;
+      font-size: 0.95rem;
     }
-    input {
+    input, select {
       width: 100%;
-      padding: 8px;
+      padding: 10px;
+      margin-top: 5px;
       border-radius: 6px;
       border: 1px solid #cbd5e1;
-      margin-top: 5px;
-      font-size: 14px;
+      font-size: 15px;
+      box-sizing: border-box;
     }
     button {
-      background: #2563eb;
-      color: white;
+      width: 100%;
+      background: var(--primary);
+      color: #fff;
       border: none;
-      padding: 10px 20px;
-      border-radius: 6px;
-      margin-top: 12px;
-      cursor: pointer;
+      border-radius: 8px;
+      padding: 14px;
+      font-size: 16px;
       font-weight: 600;
+      cursor: pointer;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      max-width: 900px;
+      margin: 0 auto;
+      z-index: 100;
     }
     button:hover {
-      background: #1e40af;
+      background: var(--primary-dark);
+    }
+    .error {
+      color: #dc2626;
+      font-weight: 600;
+      margin-top: 10px;
+      text-align: center;
+    }
+    .note {
+      color: #6b7280;
+      font-size: 13px;
+      margin-top: 8px;
+      text-align: center;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .stat {
+      background: #f1f5f9;
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+      font-size: 14px;
     }
     table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 15px;
+      overflow-x: auto;
+      font-size: 13px;
     }
     th, td {
       border: 1px solid #e2e8f0;
       padding: 8px;
       text-align: center;
-      font-size: 13px;
+      white-space: nowrap;
     }
     th {
       background: #f1f5f9;
@@ -69,27 +111,11 @@
     tr:nth-child(even) {
       background: #f9fafb;
     }
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 10px;
-      margin-top: 10px;
-    }
-    .stat {
-      background: #f1f5f9;
-      padding: 10px;
-      border-radius: 8px;
-      text-align: center;
-    }
-    .error {
-      color: #dc2626;
-      font-weight: 600;
-      margin-top: 10px;
-    }
-    .note {
-      color: #6b7280;
-      font-size: 13px;
-      margin-top: 6px;
+    @media (max-width: 720px) {
+      body { padding-bottom: 120px; }
+      h1 { font-size: 1.4rem; }
+      button { font-size: 15px; }
+      th, td { font-size: 12px; padding: 6px; }
     }
   </style>
 </head>
@@ -98,7 +124,7 @@
 
   <div class="card">
     <label>會員帳號：</label>
-    <input type="text" id="memberID" placeholder="請輸入會員帳號 (例：A123456)" />
+    <input type="text" id="memberID" placeholder="請輸入會員號 (例：A12345)" />
 
     <label>開始日期：</label>
     <input type="date" id="startDate" />
@@ -106,7 +132,12 @@
     <label>結束日期：</label>
     <input type="date" id="endDate" />
 
-    <button onclick="queryData()">查詢</button>
+    <label>快捷查詢：</label>
+    <select id="quickRange" onchange="applyQuickRange()">
+      <option value="">--請選擇--</option>
+      <option value="30">近30天</option>
+      <option value="60">近60天</option>
+    </select>
 
     <div id="errorMsg" class="error"></div>
     <div id="noteMsg" class="note"></div>
@@ -116,9 +147,9 @@
     <h3>會員資訊</h3>
     <div class="stats">
       <div class="stat"><strong>會員等級：</strong><div id="level">-</div></div>
-      <div class="stat"><strong>會員折扣%：</strong><div id="discount">-</div></div>
+      <div class="stat"><strong>會員折扣：</strong><div id="discount">-</div></div>
       <div class="stat"><strong>會員到期日：</strong><div id="expire">-</div></div>
-      <div class="stat"><strong>KK儲值金餘額：</strong><div id="balance">-</div></div>
+      <div class="stat"><strong>目前餘額：</strong><div id="balance">-</div></div>
       <div class="stat"><strong>積點餘額：</strong><div id="pointsBalance">-</div></div>
     </div>
   </div>
@@ -134,31 +165,46 @@
 
   <div class="card" id="transactions" style="display:none;">
     <h3>交易紀錄</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>日期</th>
-          <th>訂單號</th>
-          <th>KK儲值金</th>
-          <th>紅利</th>
-          <th>扣款</th>
-          <th>折扣金額</th>
-          <th>調整</th>
-          <th>餘額</th>
-          <th>積點 +</th>
-          <th>積點 -</th>
-          <th>積點餘額</th>
-        </tr>
-      </thead>
-      <tbody id="txBody"></tbody>
-    </table>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>日期</th>
+            <th>訂單號</th>
+            <th>KK儲值金</th>
+            <th>紅利</th>
+            <th>扣款</th>
+            <th>折扣金額</th>
+            <th>調整</th>
+            <th>KK儲值金餘額</th>
+            <th>積點(+)</th>
+            <th>積點(-)</th>
+            <th>會員積點餘額</th>
+          </tr>
+        </thead>
+        <tbody id="txBody"></tbody>
+      </table>
+    </div>
   </div>
+
+  <button id="searchBtn" onclick="queryData()">查詢</button>
 
   <script>
     const scriptURL = "https://script.google.com/macros/s/AKfycbzcWtGQpsEmL2rUSWcHWwv8Exs805BOhXBFKylcteveqalXkOUmNbf1DpWquH2jSCEb/exec"; 
-    // ⚠️ 部署 Web App 後，請將上方替換成 Apps Script 網址 (e.g. https://script.google.com/macros/s/XXXX/exec)
+    // ⚠️ 部署 Web App 後，把這裡換成 Apps Script 的 URL（https://script.google.com/macros/s/XXX/exec）
+
+    function applyQuickRange() {
+      const range = document.getElementById("quickRange").value;
+      if (!range) return;
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - Number(range));
+      document.getElementById("startDate").value = start.toISOString().slice(0,10);
+      document.getElementById("endDate").value = end.toISOString().slice(0,10);
+    }
 
     async function queryData() {
+      const btn = document.getElementById("searchBtn");
       const memberID = document.getElementById("memberID").value.trim();
       const startDate = document.getElementById("startDate").value;
       const endDate = document.getElementById("endDate").value;
@@ -172,6 +218,9 @@
         return;
       }
 
+      btn.disabled = true;
+      btn.textContent = "查詢中...";
+
       try {
         const url = `${scriptURL}?memberID=${encodeURIComponent(memberID)}&startDate=${startDate}&endDate=${endDate}`;
         const res = await fetch(url);
@@ -182,49 +231,49 @@
           document.getElementById("memberInfo").style.display = "none";
           document.getElementById("summary").style.display = "none";
           document.getElementById("transactions").style.display = "none";
-          return;
+        } else {
+          document.getElementById("memberInfo").style.display = "block";
+          document.getElementById("summary").style.display = "block";
+          document.getElementById("transactions").style.display = "block";
+
+          document.getElementById("level").textContent = data.memberLevel || "-";
+          document.getElementById("discount").textContent = data.memberDiscount || "-";
+          document.getElementById("expire").textContent = data.memberExpire || "-";
+          document.getElementById("balance").textContent = data.currentBalance || "-";
+          document.getElementById("pointsBalance").textContent = data.currentPointsBalance || "-";
+
+          document.getElementById("totalDeposit").textContent = data.totalDeposit || "-";
+          document.getElementById("totalBonus").textContent = data.totalBonus || "-";
+          document.getElementById("totalDiscountAmount").textContent = data.totalDiscountAmount || "-";
+
+          noteMsg.textContent = data.note || "";
+
+          const tbody = document.getElementById("txBody");
+          tbody.innerHTML = "";
+          (data.transactions || []).forEach(tx => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td>${tx.date}</td>
+              <td>${tx.orderID}</td>
+              <td>${tx.deposit}</td>
+              <td>${tx.bonus}</td>
+              <td>${tx.deduction}</td>
+              <td>${tx.discountAmount}</td>
+              <td>${tx.adjustment}</td>
+              <td>${tx.balance}</td>
+              <td>${tx.pointsAdd}</td>
+              <td>${tx.pointsDeduct}</td>
+              <td>${tx.pointsBalance}</td>
+            `;
+            tbody.appendChild(tr);
+          });
         }
-
-        // 顯示會員資訊
-        document.getElementById("memberInfo").style.display = "block";
-        document.getElementById("summary").style.display = "block";
-        document.getElementById("transactions").style.display = "block";
-
-        document.getElementById("level").textContent = data.memberLevel || "-";
-        document.getElementById("discount").textContent = data.memberDiscount || "-";
-        document.getElementById("expire").textContent = data.memberExpire || "-";
-        document.getElementById("balance").textContent = data.currentBalance || "-";
-        document.getElementById("pointsBalance").textContent = data.currentPointsBalance || "-";
-
-        document.getElementById("totalDeposit").textContent = data.totalDeposit || "-";
-        document.getElementById("totalBonus").textContent = data.totalBonus || "-";
-        document.getElementById("totalDiscountAmount").textContent = data.totalDiscountAmount || "-";
-
-        noteMsg.textContent = data.note || "";
-
-        // 填入交易紀錄
-        const tbody = document.getElementById("txBody");
-        tbody.innerHTML = "";
-        (data.transactions || []).forEach(tx => {
-          const row = document.createElement("tr");
-          row.innerHTML = `
-            <td>${tx.date}</td>
-            <td>${tx.orderID}</td>
-            <td>${tx.deposit}</td>
-            <td>${tx.bonus}</td>
-            <td>${tx.deduction}</td>
-            <td>${tx.discountAmount}</td>
-            <td>${tx.adjustment}</td>
-            <td>${tx.balance}</td>
-            <td>${tx.pointsAdd}</td>
-            <td>${tx.pointsDeduct}</td>
-            <td>${tx.pointsBalance}</td>
-          `;
-          tbody.appendChild(row);
-        });
       } catch (err) {
         errorMsg.textContent = "查詢失敗：" + err.message;
       }
+
+      btn.disabled = false;
+      btn.textContent = "查詢";
     }
   </script>
 </body>
