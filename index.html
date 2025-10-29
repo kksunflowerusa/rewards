@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
@@ -55,17 +55,9 @@
       margin: 0 auto;
       z-index: 999;
     }
-    button:hover {
-      background: var(--primary-dark);
-    }
-    .result {
-      margin-top: 20px;
-    }
-    .error {
-      color: #d32f2f;
-      text-align: center;
-      font-weight: bold;
-    }
+    button:hover { background: var(--primary-dark); }
+    .result { margin-top: 20px; }
+    .error { color: #d32f2f; text-align: center; font-weight: bold; }
     .balance {
       text-align: center;
       font-size: 20px;
@@ -80,23 +72,14 @@
       margin-top: 6px;
       line-height: 1.5;
     }
-    .muted {
-      text-align: center;
-      color: #666;
-      font-size: 13px;
-      margin-top: 6px;
-    }
+    .muted { text-align: center; color: #666; font-size: 13px; margin-top: 6px; }
     .table-container {
       overflow-x: auto;
       margin-top: 15px;
       background: white;
       border-radius: 6px;
     }
-    table {
-      width: 100%;
-      min-width: 680px;
-      border-collapse: collapse;
-    }
+    table { width: 100%; min-width: 960px; border-collapse: collapse; }
     th, td {
       border: 1px solid #ddd;
       padding: 8px;
@@ -104,9 +87,7 @@
       font-size: 13px;
       white-space: nowrap;
     }
-    th {
-      background: #f1f3f5;
-    }
+    th { background: #f1f3f5; }
     @media (max-width: 720px) {
       th, td { font-size: 12px; padding: 6px; }
       h2 { font-size: 1.3rem; }
@@ -185,6 +166,7 @@
 
         const rows = data.transactions || [];
         const currentBalance = data.currentBalance || "0";
+        const currentPointsBalance = data.currentPointsBalance || "0";
         const totalDeposit = data.totalDeposit || "0";
         const totalBonus = data.totalBonus || "0";
         const totalDiscountAmount = data.totalDiscountAmount || "0";
@@ -193,7 +175,7 @@
         const memberExpire = data.memberExpire || "-";
         const note = data.note || "";
 
-        let html = `<div class="balance">目前餘額：$${escapeHtml(currentBalance)}</div>`;
+        let html = `<div class="balance">目前餘額：$${escapeHtml(currentBalance)}　｜　積點餘額：${escapeHtml(currentPointsBalance)} 點</div>`;
         html += `<div class="summary">等級：${escapeHtml(memberLevel)}　｜　折扣：${escapeHtml(memberDiscount)}%　｜　到期：${escapeHtml(memberExpire)}</div>`;
         html += `<div class="summary">儲值總額：$${escapeHtml(totalDeposit)}　｜　紅利總額：$${escapeHtml(totalBonus)}　｜　折扣總額：$${escapeHtml(totalDiscountAmount)}</div>`;
 
@@ -216,6 +198,9 @@
           <th>折扣金額</th>
           <th>特殊調整</th>
           <th>餘額</th>
+          <th>積點(+)</th>
+          <th>積點(-)</th>
+          <th>積點餘額</th>
         </tr>`;
 
         html += rows.map(r => `
@@ -228,6 +213,9 @@
             <td>${escapeHtml(r.discountAmount)}</td>
             <td>${escapeHtml(r.adjustment)}</td>
             <td>${escapeHtml(r.balance)}</td>
+            <td>${escapeHtml(r.pointsAdd)}</td>
+            <td>${escapeHtml(r.pointsDeduct)}</td>
+            <td>${escapeHtml(r.pointsBalance)}</td>
           </tr>
         `).join('');
 
